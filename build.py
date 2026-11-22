@@ -698,14 +698,16 @@ def home(regions_count, region_centers, guides):
         ('상가·업소', ['사다리차', '셔터·자동문 수리', '업소용 냉장고', '간판 수리', '팝업 인테리어']),
     ]
     soon = ''.join(f'<p class="soon-row"><b>{E(n)}</b> {" · ".join(E(i) for i in items if i not in live)}</p>' for n, items in groups if any(i not in live for i in items))
-    more = ''.join(f'<h3 class="sub">{E(n)}</h3><div class="links">' + ''.join(f'<a href="{E(live[GUIDES[k]["tile"]])}">{E(GUIDES[k]["tile"])}</a>' for k in ks if k in GUIDES and GUIDES[k]['tile'] in live) + '</div>'
+    GI = {'에어컨-고장': '❄︎', '수전-교체': '🚰', '방수': '☂︎', '정화조-청소': '🚽', '입주청소': '🧽', '줄눈-탄성코트': '🧱', '유품정리': '📦',
+          '방역-해충': '🐜', '비둘기-벌집': '🐦', '사다리차': '🪜', '셔터-자동문': '🚪', '업소용-냉장고': '🧊', '간판-수리': '💡', '팝업-인테리어': '🛋'}
+    more = ''.join(f'<h3 class="sub">{E(n)}</h3><div class="hots">' + ''.join(f'<a class="hot" href="{E(live[GUIDES[k]["tile"]])}"><span class="ic" aria-hidden="true">{GI.get(k, "•")}</span><b>{E(GUIDES[k]["tile"])}</b></a>' for k in ks if k in GUIDES and GUIDES[k]['tile'] in live) + '</div>'
                    for n, ks in GROUPS[1:])
     if len(regions_count) <= 12:
         open_regions = ''.join(f'<a href="{E(url_path("자동차정비", slug_region(r)))}">{E(short_region(r))}</a>' for r in regions_count)
     else:
         sc = Counter(r.split()[0] for r in regions_count)
         open_regions = ''.join(f'<a href="{E(url_path("자동차정비"))}#{E(sd)}">{E(SIDO_SHORT.get(sd, sd))} <span class="muted">{n}개 지역</span></a>' for sd, n in sorted(sc.items(), key=lambda x: -x[1]))
-    body = f'''<section class="hero home"><h1>내 시간에<br><span class="hl">예약방문, 전화</span>하세요</h1><p class="lead">보일러·하수구·누수 같은 출장 수리부터 자동차 정비까지, 동네 업체를 모았어요. 원하는 시간에 맞춰 예약하고 방문하거나, 지금 바로 전화하세요.</p></section>
+    body = f'''<section class="hero home"><h1>내 시간에<br><span class="hl">예약방문, 전화</span>하세요</h1><p class="lead">출장 수리·자동차 정비부터 음식점 단체 예약, 병원·세무·법률 사무소까지 동네 업체를 모았어요. 원하는 시간에 맞춰 예약하고 방문하거나, 지금 바로 전화하세요.</p></section>
 <section class="card find"><h2>무엇이 필요하세요?</h2>
 <label class="search"><span class="sr">업종이나 동네 검색</span><input id="q" type="search" placeholder="예: 보일러, 하수구, 연수구 정비" autocomplete="off"></label>
 <button type="button" id="near" class="btn ghost wide">내 위치에서 가까운 곳</button>
@@ -715,7 +717,7 @@ def home(regions_count, region_centers, guides):
 <section class="card"><h2>열린 동네</h2><div class="links">{open_regions}</div><p class="muted">동네와 업종은 차례로 늘어나요.</p></section>
 {('<section class="card"><h2>음식점 단체 예약·포장</h2><div class="hots">' + ''.join(f'<a class="hot" href="{E(url_path("음식점", g))}"><span class="ic" aria-hidden="true">{M["icon"]}</span><b>{E(M["name"])}</b></a>' for g, M in FOOD.items()) + '</div></section>') if FOOD_PAGES else ''}
 <section class="card"><h2>집 수리·청소·상가 업종</h2>{more}</section>
-{''.join(f'<section class="card"><h2>{E(S["label"])}</h2><div class="links">' + ''.join(f'<a href="{E(url_path(sec, g))}">{gm["icon"]} {E(gm["name"])}</a>' for g, gm in S['groups'].items()) + '</div></section>' for sec, S in DIRM.items()) if DIR_PAGES else ''}
+{''.join(f'<section class="card"><h2>{E(S["label"])}</h2><div class="hots">' + ''.join(f'<a class="hot" href="{E(url_path(sec, g))}"><span class="ic" aria-hidden="true">{gm["icon"]}</span><b>{E(gm["name"])}</b></a>' for g, gm in S['groups'].items()) + '</div></section>' for sec, S in DIRM.items()) if DIR_PAGES else ''}
 {f'<section class="card"><h2>곧 열려요</h2>{soon}</section>' if soon else ''}
 {owner_cta('동네 업체')}
 <script type="application/json" id="regions" data-src="/search.json">[]</script>'''

@@ -173,3 +173,61 @@ h3.sub:first-of-type{margin-top:4px}
 .btn.book .dev{font-size:11px;font-weight:700;color:#FF8A1F}
 .tel{margin:6px 0 0;font-size:14px;color:#4E5968;font-weight:600}
 .actions.one{grid-template-columns:1fr}
+
+/* ===== 디자인 v2: 애플 휴먼 인터페이스 느낌 (차분한 색, 정사각형 타일, 부드러운 움직임) ===== */
+:root{--bg:#F5F5F7;--card:#FFFFFF;--text:#1D1D1F;--sub:#6E6E73;--line:rgba(0,0,0,.08);--fill:#F2F2F4;--accent:#3F6597;--accent-soft:#EEF2F7;--warm:#B7834F;--ease:cubic-bezier(.2,.8,.2,1)}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;letter-spacing:-.01em}
+a{color:var(--accent)}
+.top{background:rgba(255,255,255,.72);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line)}
+.top-owner{background:var(--fill);color:var(--text);border-radius:999px;font-weight:600}
+.hero h1{font-weight:700;letter-spacing:-.02em}
+.hl{color:var(--accent)}
+.lead,.muted,.addr,.crumbs,.crumbs a,.source,.tel,.lookup-note,.steps span{color:var(--sub)}
+.card{background:var(--card);border-radius:20px;box-shadow:0 1px 2px rgba(0,0,0,.03),0 6px 20px rgba(0,0,0,.04)}
+.card h2{font-weight:700;letter-spacing:-.015em}
+.stats div{border-radius:18px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.stats b{font-weight:700}
+h3.sub{color:var(--sub);font-weight:600;font-size:13px;text-transform:none;margin:18px 2px 8px}
+/* 정사각형 타일 */
+.hots{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media(min-width:560px){.hots{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.hot{aspect-ratio:1/1;min-height:0;background:var(--fill);color:var(--text);border-radius:22px;gap:8px;padding:10px 6px;
+  transition:transform .35s var(--ease),box-shadow .35s var(--ease),background-color .35s var(--ease)}
+.hot .ic{font-size:30px;filter:saturate(.55);transition:transform .45s var(--ease)}
+.hot b{font-size:13.5px;font-weight:600;color:var(--text)}
+.req-cta,.soon{background:var(--accent-soft)}
+.soon h2{color:var(--accent)}
+/* 버튼·칩 */
+.btn{border-radius:14px;font-weight:600;transition:transform .2s var(--ease),filter .2s var(--ease),background-color .2s var(--ease),box-shadow .25s var(--ease)}
+.btn.dark{background:var(--text)}
+.btn.blue{background:var(--accent)}
+.btn.ghost{background:var(--fill);color:var(--text)}
+.btn.book{color:var(--accent);border-color:rgba(63,101,151,.55);background:#fff}
+.btn.book .dev{color:var(--warm);font-weight:600}
+.links a{background:var(--fill);border-radius:14px;font-weight:600;transition:transform .25s var(--ease),background-color .25s var(--ease)}
+.chip{background:var(--fill);color:#3A3A3C;font-weight:600;border-radius:8px}
+.chip.open{background:#E9F2EC;color:#2F6B45}.chip.closed{background:#F6ECEC;color:#8A3B3B}
+.f{border-color:var(--line);font-weight:600}.f.on{background:var(--text);border-color:var(--text)}
+.qchip{border-color:var(--line);font-weight:600}
+.res{background:var(--accent-soft);transition:transform .25s var(--ease)}
+.warn{background:#F7F1E8;color:#5A4630;border-radius:16px}
+.pin{background:#AEAEB2;font-weight:700}
+.shop{border:1px solid var(--line);border-radius:20px;transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+.shop h3{font-weight:700}
+.search input{border-color:var(--line);border-radius:14px;background:var(--fill)}
+.search input:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 4px rgba(63,101,151,.15)}
+.foot{border-top:1px solid var(--line)}
+/* 마우스를 올리면 살짝 떠오르기 (마우스가 있는 기기만) */
+@media(hover:hover) and (pointer:fine){
+  .hot:hover{transform:translateY(-4px) scale(1.03);background:#fff;box-shadow:0 12px 28px rgba(0,0,0,.10)}
+  .hot:hover .ic{transform:scale(1.15) rotate(-4deg)}
+  .links a:hover,.res:hover{transform:translateY(-2px);background:#E9E9EC}
+  .shop:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.07)}
+  .btn:hover{filter:brightness(1.06);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+  .btn.ghost:hover{background:#E8E8EB}
+  .card:has(> .hots):hover{box-shadow:0 1px 2px rgba(0,0,0,.03),0 10px 28px rgba(0,0,0,.06)}
+}
+/* 누를 때 눌리는 느낌 */
+.hot:active,.btn:active,.links a:active,.res:active{transform:scale(.96);transition-duration:.1s}
+.btn:focus-visible,.hot:focus-visible,.links a:focus-visible{outline:3px solid rgba(63,101,151,.45);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
