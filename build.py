@@ -160,7 +160,7 @@ def page(title, desc, path, body, crumbs=None, jsonld=None, extra_head='', noind
 <link rel="stylesheet" href="/s.css">
 {extra_head}{ld}</head>
 <body>
-<header class="top"><a class="brand" href="/"><span class="logo" aria-hidden="true">내</span><b>내시간에</b></a><a class="top-owner" href="{E(url_path('사장님'))}">사장님이세요?</a></header>
+<header class="top"><a class="brand" href="/"><img class="logo" src="/favicon.svg" alt="" width="28" height="28"><b>내시간에</b></a><a class="top-owner" href="{E(url_path('사장님'))}">사장님이세요?</a></header>
 <main>
 {crumb_html}
 {body}
