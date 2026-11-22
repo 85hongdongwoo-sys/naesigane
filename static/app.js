@@ -62,6 +62,34 @@
       })();
     },function(){fallback()});
   })});
+
+  // ---- 위성사진·로드뷰 (카카오 지도 API, 누를 때 불러오기)
+  $$('.kview').forEach(function(box){$('.kv-load',box).addEventListener('click',function(){
+    var btn=this;btn.disabled=true;btn.textContent='불러오는 중…';
+    loadKakao().then(function(){
+      var K=kakao.maps,mEl=$('.kv-map',box),rEl=$('.kv-rv',box),note=$('.kv-note',box);
+      btn.remove();mEl.hidden=false;note.hidden=false;
+      var c=new K.LatLng(+box.dataset.lat,+box.dataset.lng),m=new K.Map(mEl,{center:c,level:5});
+      m.setMapTypeId(K.MapTypeId.HYBRID);m.setZoomable(true);
+      m.addControl(new K.ZoomControl(),K.ControlPosition.RIGHT);
+      var rv=null,rc=new K.RoadviewClient(),pin=new K.Marker({position:c});
+      function show(ll,label){rc.getNearestPanoId(ll,80,function(id){
+        if(!id){note.textContent='이 근처는 로드뷰가 없어요. 큰길 쪽을 눌러 보세요.';return}
+        rEl.hidden=false;if(!rv)rv=new K.Roadview(rEl);rv.setPanoId(id,ll);pin.setPosition(ll);pin.setMap(m);
+        note.textContent=(label?label+' 근처 ':'')+'로드뷰예요. 화면을 끌어서 둘러볼 수 있어요.';
+      })}
+      var pts=JSON.parse(box.dataset.pts||'[]'),bd=new K.LatLngBounds();
+      pts.forEach(function(p){var ll=new K.LatLng(p[0],p[1]);bd.extend(ll);
+        var el=document.createElement('button');el.type='button';el.className='mk kmk';el.textContent=p[2];
+        el.onclick=function(ev){ev.stopPropagation();show(ll,p[2]+'번')};
+        new K.CustomOverlay({position:ll,content:el,yAnchor:.5,clickable:true}).setMap(m);
+      });
+      if(pts.length>1)m.setBounds(bd);
+      setTimeout(function(){m.relayout();if(pts.length>1)m.setBounds(bd);else m.setCenter(c)},300);
+      K.event.addListener(m,'click',function(e){show(e.latLng)});
+      show(pts.length?new K.LatLng(pts[0][0],pts[0][1]):c,pts.length?'1번':'');
+    },function(){btn.disabled=false;btn.textContent='위성사진·로드뷰 보기';box.insertAdjacentHTML('beforeend','<p class="muted">지도를 불러오지 못했어요. 잠시 뒤 다시 눌러 주세요.</p>')});
+  })});
   // ---- 지도 (누를 때 불러오기)
   var mapEl=$('#map');
   if(mapEl){$('.map-load',mapEl).addEventListener('click',function(){

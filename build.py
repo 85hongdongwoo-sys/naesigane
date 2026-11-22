@@ -279,6 +279,7 @@ def food_page(g, region, entry, ctx):
 <div class="shops" data-page="20">{cards}</div><button type="button" class="btn ghost wide more" hidden>더 보기</button>
 {f'<p class="muted">그 외 {n - len(lst)}곳은 네이버 지도에서 찾아보세요.</p>' if n > len(lst) else ''}
 <p class="source">가게 이름·주소: 소상공인시장진흥공단 상가(상권)정보{(" (" + sd[:4] + "." + sd[4:6] + ")") if sd else ""}. 영업 상황이 바뀌었을 수 있어요.</p></section>
+{view_section(gu, [(r[3], r[4], i + 1) for i, r in enumerate(lst) if len(r) > 4], None, '가게')}
 <section class="card"><h2>단체 예약 전화할 때</h2><p>{E(M['group'])} 날짜·시간·인원·예산을 한 번에 말하면 통화가 짧아져요.</p></section>
 <section class="card"><h2>포장 예약할 때</h2><p>{E(M['pack'])}</p></section>
 {f'<section class="card"><h2>{E(gu)} 어느 동네에 많아요?</h2><p>{E(" · ".join(dongs))} 순으로 많아요.</p></section>' if dongs else ''}
@@ -340,6 +341,7 @@ def dir_page(sec, g, region, entry, ctx):
 <div class="shops" data-page="20">{cards}</div><button type="button" class="btn ghost wide more" hidden>더 보기</button>
 {f'<p class="muted">그 외 {n - len(lst)}곳은 네이버 지도에서 찾아보세요.</p>' if n > len(lst) else ''}
 <p class="source">이름·주소: 소상공인시장진흥공단 상가(상권)정보{(" (" + sd[:4] + "." + sd[4:6] + ")") if sd else ""}. 목록 순서는 동네별 정리일 뿐 추천 순위가 아니에요.</p></section>
+{view_section(gu, [(r[3], r[4], i + 1) for i, r in enumerate(lst) if len(r) > 4], None, '병원' if not pro else '사무소')}
 {tips}
 {f'<section class="card"><h2>{E(gu)} 어느 동네에 많아요?</h2><p>{E(" · ".join(dongs))} 순으로 많아요.</p></section>' if dongs else ''}
 {f'<section class="card"><h2>{E(gu)} 다른 {E(S["label"])}</h2><div class="links">{others}</div></section>' if others else ''}
@@ -488,6 +490,14 @@ def region_page(region, shops, all_regions, region_centers):
 </section>
 <section class="card soon"><h2>원하는 시간에 맞춰 예약하는 기능, 준비 중이에요</h2><p>시간을 정해 요청하면 {E(gu)} 정비소 사장님이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. 사장님 가입이 시작되면 이 동네부터 열려요. <a href="{E(url_path('요청'))}?t={quote('자동차 정비')}&amp;r={quote(region)}">어떻게 요청하는지 미리 보기</a></p></section>
 {types_html}
+{view_section(gu, pts, region_centers.get(region), '정비소')}
+<section class="card"><h2>정비소 가기 전까지 이렇게 하세요</h2>
+<p>{E(gu)}에서 차가 갑자기 이상해졌을 때, 정비소에 맡기기 전까지 안전하게 버티는 방법이에요.</p>
+<ol class="steps"><li><b>빨간 경고등이면 바로 세우세요</b><span>엔진 온도, 엔진오일, 브레이크 경고등이 빨갛게 켜지면 안전한 곳에 차를 세우고 시동을 꺼요. 노란 경고등은 천천히 정비소까지 가도 되는 경우가 많지만 사진은 찍어 두세요.</span></li>
+<li><b>고속도로·큰길에서는 사람부터 피하세요</b><span>비상등을 켜고 갓길에 세운 뒤, 사람은 가드레일 밖으로 나가요. 고속도로는 한국도로공사 긴급견인(1588-2504)을 무료로 부를 수 있어요.</span></li>
+<li><b>보험 긴급출동을 먼저 확인하세요</b><span>배터리 방전, 타이어 펑크, 잠금, 견인은 자동차보험 긴급출동으로 무료이거나 싸게 해결되는 경우가 많아요. 보험사 앱이나 증권에 있는 번호로 부르세요.</span></li>
+<li><b>증상을 기록해 두세요</b><span>언제부터, 어떤 소리·냄새·떨림이 있는지, 경고등 사진을 정비소에 보여 주면 점검 시간이 줄고 엉뚱한 수리를 막을 수 있어요.</span></li></ol>
+<p class="muted">정비소에 갈 때는 견적서를 먼저 받고, 바꾼 부품은 돌려받거나 보여 달라고 하세요. 큰 수리는 두 곳 이상에서 견적을 비교하는 게 좋아요.</p></section>
 {faq_html(faqs)}
 {near_html}
 {owner_cta(gu + ' 정비소')}
@@ -513,15 +523,111 @@ def group_of(kind):
             return n, ks
     return '다른 업종', list(GUIDES)
 
+
+GX = json.load(open(os.path.join(ROOT, 'data', 'guides_extra.json'), encoding='utf-8'))
+
+def wait_section(kind, gu, near=None):
+    X = GX.get(kind)
+    if not X:
+        return ''
+    far = ''
+    if gu.endswith('군') and near:
+        far = (f'<p>{E(gu)}처럼 군 지역은 업체가 읍내에 모여 있어서 마을까지 오는 데 시간이 걸리고 출장비가 붙는 경우가 많아요. '
+               f'가까운 {E("·".join(short_region(r) for r in near[:3]))} 업체도 함께 알아보면 더 빨리 올 수 있는 곳을 찾을 수 있어요. '
+               f'전화할 때 마을 이름과 큰길 기준 위치를 말해 주세요.</p>')
+    li = ''.join(f'<li><b>{E(t)}</b><span>{E(d)}</span></li>' for t, d in X['wait'])
+    prep = ('<ul class="plain"><li>고장 난 곳이나 현장 사진 2~3장</li><li>동 이름, 아파트·건물 이름, 몇 층인지와 엘리베이터 유무</li>'
+            '<li>주차할 곳이 있는지 (없으면 근처 공영주차장 위치)</li><li>언제부터 그랬는지, 직접 해 본 방법이 있는지</li></ul>')
+    return (f'<section class="card"><h2>업체가 올 때까지 이렇게 하세요</h2>'
+            f'<p>{E(gu)}에서 업체를 불러도 바로 오지 못하는 경우가 많아요. 기다리는 동안 피해를 줄이는 방법이에요.</p>'
+            f'<ol class="steps">{li}</ol>'
+            f'<h3 class="sub">업체에 미리 알려 주면 좋은 것</h3>{prep}'
+            f'<p class="muted">이걸 미리 보내면 업체가 맞는 부품과 장비를 챙겨 와서 한 번에 끝날 가능성이 높아지고, 출장비를 두 번 내는 일을 줄일 수 있어요.</p>{far}</section>')
+
+def age_section(kind, gu, apts):
+    X = GX.get(kind)
+    if not X:
+        return ''
+    A = X['aging']
+    yr = TODAY.year
+    ys = [a[2] for a in apts if a[2]]
+    if len(ys) >= 3:
+        o = sum(1 for y in ys if yr - y >= 30)
+        m = sum(1 for y in ys if 15 <= yr - y < 30)
+        n = len(ys) - o - m
+        top = max((o, 'old'), (m, 'mid'), (n, 'new'))[1]
+        avg = round(sum(ys) / len(ys))
+        oldest = min((a for a in apts if a[2]), key=lambda a: a[2])
+        lead = (f'{E(gu)} 아파트 {len(ys)}곳은 평균 <b>{avg}년</b>에 지어졌어요. 가장 오래된 곳은 {E(oldest[0])}({oldest[2]}년)이에요. '
+                f'지은 지 30년 넘은 단지 <b>{o}곳</b>, 15~30년 <b>{m}곳</b>, 15년 안 된 단지 <b>{n}곳</b>이에요.')
+        rows = [('old', f'30년 넘은 단지 ({o}곳)'), ('mid', f'15~30년 된 단지 ({m}곳)'), ('new', f'15년 안 된 단지 ({n}곳)')]
+        rows.sort(key=lambda r: r[0] != top)
+        tail = '내가 사는 단지가 어디에 해당하는지 보고, 업체에 전화할 때 \'몇 년에 지은 아파트\'인지 함께 말해 주세요.'
+    else:
+        lead = (f'{E(gu)}에는 관리비가 공개된 아파트 정보가 많지 않아요. 단독주택이나 빌라라면 정부24의 건축물대장에서 지은 해(사용승인일)를 확인할 수 있어요. '
+                f'지은 햇수에 따라 생기는 문제가 달라요.')
+        rows = [('old', '지은 지 30년 넘은 집'), ('mid', '15~30년 된 집'), ('new', '15년 안 된 집')]
+        tail = '업체에 전화할 때 몇 년쯤 된 건물인지 함께 말하면 필요한 장비와 비용을 더 정확히 들을 수 있어요.'
+    li = ''.join(f'<li><b>{E(t)}</b><span>{E(A[k])}</span></li>' for k, t in rows)
+    return (f'<section class="card"><h2>{E(gu)} 건물 나이로 보는 {E(GUIDES[kind]["name"])}</h2><p>{lead}</p>'
+            f'<ul class="steps age">{li}</ul><p class="muted">{tail}</p></section>')
+
+def choose_section(trade, gu):
+    where = f'{E(gu)}에서 ' if gu else ''
+    return (f'<section class="card"><h2>{E(trade)} 업체, 이렇게 비교해서 고르세요</h2>'
+            f'<p>{where}{E(trade)} 업체를 처음 부를 때는 두세 곳에 같은 내용으로 물어보고 비교하는 게 가장 확실해요.</p>'
+            '<ul class="plain"><li><b>출장비와 작업비를 나눠서</b> 물어보세요. 고치지 못해도 출장비를 받는지 미리 알아야 해요.</li>'
+            '<li><b>사진을 보내고 대략 견적</b>을 받아 보세요. 와서 보고 값이 크게 달라지면 이유를 꼭 물어보세요.</li>'
+            '<li><b>사업자등록이 된 업체</b>인지, 작업 뒤 <b>영수증이나 카드 결제</b>가 되는지 확인하세요. 나중에 하자가 생겼을 때 근거가 돼요.</li>'
+            '<li><b>다시 고장 나면 무상으로 봐 주는 기간</b>이 있는지 물어보세요.</li></ul></section>')
+
+def view_section(gu, pts, center=None, what='업체'):
+    """카카오 지도 API로 위성(스카이뷰)·로드뷰를 그 자리에서 보여 줘요. 캡처 저장 없음."""
+    pts = [p for p in pts if p and p[0] and p[1]][:60]
+    if not center and pts:
+        center = (round(sum(p[0] for p in pts) / len(pts), 5), round(sum(p[1] for p in pts) / len(pts), 5))
+    if not center or not center[0]:
+        return ''
+    return (f'<section class="card"><h2>{E(gu)} 실제 모습 보기 (위성사진·로드뷰)</h2>'
+            f'<p>{E(gu)} 동네가 실제로 어떻게 생겼는지 위성사진과 거리 사진(로드뷰)으로 볼 수 있어요. '
+            f'{E(what)} 위치 번호를 누르면 그 앞 도로 모습이 나와서, 처음 가는 곳도 입구와 주차할 곳을 미리 확인할 수 있어요.</p>'
+            f'<div class="kview" data-lat="{center[0]}" data-lng="{center[1]}" data-pts=\'{json.dumps([[p[0], p[1], p[2]] for p in pts], ensure_ascii=False)}\'>'
+            f'<button type="button" class="btn ghost wide kv-load">위성사진·로드뷰 보기</button>'
+            f'<div class="kv-map" hidden></div><div class="kv-rv" hidden></div>'
+            f'<p class="muted kv-note" hidden>위성사진에서 원하는 도로를 누르면 그 자리 로드뷰가 나와요.</p></div>'
+            f'<p class="source">지도·위성사진·로드뷰: 카카오맵. 촬영 시점에 따라 지금 모습과 다를 수 있어요.</p></section>')
+
+def dong_section(trade, gu, dongs, apts):
+    if not dongs:
+        return ''
+    dl = dongs[:30]
+    p = [f'{E(gu)}의 주요 동네는 {E("·".join(dl))}{" 등" if len(dongs) > 30 else ""}이에요.']
+    by = defaultdict(list)
+    for a in apts:
+        if a[1]:
+            by[a[1]].append(a)
+    rank = sorted(by.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:6]
+    items = ''
+    if rank:
+        def one(d, lst):
+            ys = [a[2] for a in lst if a[2]]
+            hh = sum(a[3] or 0 for a in lst)
+            s = f'<li><b>{E(d)}</b><span>아파트 {len(lst)}곳'
+            if hh: s += f', 약 {hh:,}세대'
+            if ys: s += f', {min(ys)}~{max(ys)}년에 지음'
+            return s + '</span></li>'
+        items = '<h3 class="sub">아파트가 많은 동네</h3><ul class="steps">' + ''.join(one(d, l) for d, l in rank) + '</ul>'
+        p.append(f'그중 아파트가 가장 많은 곳은 {E(rank[0][0])}이에요.')
+    p.append(f'업체에 전화하거나 요청할 때 <b>동 이름과 아파트·건물 이름</b>을 함께 말하면 이동 시간과 출장비를 더 정확히 들을 수 있어요. '
+             f'같은 {E(gu)} 안이라도 업체 위치에서 먼 동네는 출장비가 더 붙을 수 있으니 {E(trade)} 업체를 고를 때 가까운 곳을 먼저 보세요.')
+    return f'<section class="card"><h2>{E(gu)} 동네별로 보면</h2><p>{" ".join(p)}</p>{items}</section>'
+
 def guide_page(kind, region, ctx=None):
     G = GUIDES[kind]
     gu = gu_name(region)
     ctx = ctx or {}
     dongs = ctx.get('dongs') or []
-    local = ''
-    if dongs:
-        local = (f'<section class="card"><h2>{E(gu)} 어디서든 부를 수 있게</h2><p>{E(gu)}에는 {E("·".join(dongs[:12]))} 같은 동네가 있어요. '
-                 f'업체에 전화하거나 요청할 때 <b>동 이름과 아파트·건물 이름</b>을 함께 말하면 이동 시간과 출장비를 더 정확히 들을 수 있어요.</p></section>')
+    local = dong_section(G['name'], gu, dongs, ctx.get('apts') or [])
     near = ctx.get('near') or []
     near_html = ''
     if near:
@@ -573,13 +679,17 @@ def guide_page(kind, region, ctx=None):
 <p class="lead">{E(fill(G['lead']))}</p></section>
 {warn}
 {live}
+{view_section(gu, [(r[3], r[4], i + 1) for i, r in enumerate(stores[:60]) if len(r) > 4], ctx.get('center'))}
 <section class="card"><h2>{E(G['steps_title'])}</h2><ol class="steps">{steps}</ol></section>
+{wait_section(kind, gu, near)}
 <section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul></section>
 {extra}
 {f'<section class="card"><h2>업체에 전화할 때 꼭 물어볼 것</h2><ul class="plain">{ask}</ul></section>' if ask else ''}
 <section class="card soon"><h2>원하는 시간에 맞춰 부르는 기능, 준비 중이에요</h2><p>시간과 예산을 정해 요청하면 {E(gu)} 업체 사장님들이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. <a href="{E(url_path('요청'))}?t={quote(G['name'])}&amp;r={quote(region)}">어떻게 요청하는지 미리 보기</a></p></section>
 {local}
+{age_section(kind, gu, ctx.get('apts') or [])}
 {apt_section(kind, gu, ctx.get('apts'), ctx.get('apt_date', ''))}
+{choose_section(G['name'], gu)}
 {faq_html(faqs)}
 <section class="card"><h2>{E(gu)} {E(gname)}</h2><div class="links">{others}</div>{car}</section>
 <section class="card"><h2>{E(gu)} 다른 업종</h2><div class="links">{rest}</div></section>
@@ -652,7 +762,23 @@ def guide_index(kind, regions):
         by_sido[r.split()[0]].append(r)
     secs = ''.join(f'<section class="card" id="{E(sd)}"><h2>{E(sd)}</h2><div class="links">' + ''.join(
         f'<a href="{E(url_path("안내", kind, r.replace(" ", "-")))}">{E(gu_name(r))}</a>' for r in rs) + '</div></section>' for sd, rs in by_sido.items())
-    body = f'''<section class="hero"><h1>{E(G['name'])}, {E(G['h1_tail'])}</h1><p class="lead">사는 지역을 고르면 {E(G['name'])} 때 할 일과 업체에 물어볼 것을 지역에 맞춰 볼 수 있어요.</p></section>{secs}'''
+    X = GX.get(kind, {})
+    steps = ''.join(f'<li><b>{E(t)}</b><span>{E(d)}</span></li>' for t, d in G['steps'])
+    wait = ''.join(f'<li><b>{E(t)}</b><span>{E(d)}</span></li>' for t, d in X.get('wait', []))
+    when = ''.join(f'<li>{E(w)}</li>' for w in G['call_when'])
+    age = ''.join(f'<li><b>{t}</b><span>{E(X["aging"][k])}</span></li>' for k, t in (('old', '지은 지 30년 넘은 집'), ('mid', '15~30년 된 집'), ('new', '15년 안 된 집'))) if X.get('aging') else ''
+    warn = f'<div class="warn">{G["warn"]}</div>' if G.get('warn') else ''
+    body = f'''<section class="hero"><h1>{E(G['name'])}, {E(G['h1_tail'])}</h1><p class="lead">아래에서 사는 지역을 고르면 그 지역 업체 목록과 아파트·동네 정보까지 맞춰서 볼 수 있어요. 먼저 어디서나 통하는 방법부터 정리했어요. 급할수록 순서대로 보고, 위험하다 싶으면 바로 전문가를 부르세요.</p></section>
+{warn}
+<section class="card"><h2>{E(G['steps_title'])}</h2><ol class="steps">{steps}</ol></section>
+{f'<section class="card"><h2>업체가 올 때까지 이렇게 하세요</h2><ol class="steps">{wait}</ol></section>' if wait else ''}
+<section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul></section>
+{f'<section class="card"><h2>건물 나이로 보는 {E(G["name"])}</h2><ul class="steps age">{age}</ul></section>' if age else ''}
+{choose_section(G['name'], '')}
+{f'<section class="card"><h2>업체에 전화할 때 꼭 물어볼 것</h2><ul class="plain">' + ''.join(f'<li>{E(a)}</li>' for a in G.get('ask', [])) + '</ul></section>' if G.get('ask') else ''}
+{faq_html([(q.replace('{gu}', '우리 동네').replace('{region}', '우리 지역'), a.replace('{gu}', '우리 동네').replace('{region}', '우리 지역')) for q, a in G['faqs']])}
+<section class="card"><h2>지역별 {E(G['name'])} 안내</h2><p class="muted">시·도를 찾아 우리 시·군·구를 누르세요.</p></section>
+{secs}'''
     return path, page(f'{G["name"]} 지역별 안내 | 내시간에', f'{G["name"]} 때 바로 할 일과 업체 부르는 법을 시·군·구별로 안내해요.', path, body, [('홈', '/'), (G['name'], path)])
 
 def trade_index(regions_count):

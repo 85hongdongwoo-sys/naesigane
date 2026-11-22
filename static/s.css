@@ -231,3 +231,7 @@ h3.sub{color:var(--sub);font-weight:600;font-size:13px;text-transform:none;margi
 .hot:active,.btn:active,.links a:active,.res:active{transform:scale(.96);transition-duration:.1s}
 .btn:focus-visible,.hot:focus-visible,.links a:focus-visible{outline:3px solid rgba(63,101,151,.45);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.kview .kv-map{width:100%;aspect-ratio:4/3;max-height:420px;border-radius:14px;overflow:hidden;margin-top:8px}
+.kview .kv-rv{width:100%;aspect-ratio:16/10;max-height:380px;border-radius:14px;overflow:hidden;margin-top:10px}
+.kmk{border:0;cursor:pointer;padding:0}
