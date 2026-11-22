@@ -388,6 +388,7 @@ def guide_page(kind, region, ctx=None):
 {f'<section class="card"><h2>업체에 전화할 때 꼭 물어볼 것</h2><ul class="plain">{ask}</ul></section>' if ask else ''}
 <section class="card soon"><h2>원하는 시간에 맞춰 부르는 기능, 준비 중이에요</h2><p>시간과 예산을 정해 요청하면 {E(gu)} 업체 사장님들이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. <a href="{E(url_path('요청'))}?t={quote(G['name'])}&amp;r={quote(region)}">어떻게 요청하는지 미리 보기</a></p></section>
 {local}
+{apt_section(kind, gu, ctx.get('apts'), ctx.get('apt_date', ''))}
 {faq_html(faqs)}
 <section class="card"><h2>{E(gu)}의 다른 급한 일</h2><div class="links">{others}</div>{car}</section>
 {near_html}
@@ -520,6 +521,63 @@ def home(regions_count, region_centers, guides):
 
 # ---------------------------------------------------------------- write
 
+def load_apts():
+    fp = os.path.join(ROOT, 'data', 'apartments.json')
+    if not os.path.exists(fp):
+        return {}, ''
+    d = json.load(open(fp, encoding='utf-8'))
+    return d.get('regions', {}), d.get('_date', '')
+
+def apt_section(kind, gu, apts, apt_date):
+    """K-apt 단지 정보로 지역마다 다른 안내 문단을 만들어요."""
+    if not apts:
+        return ''
+    n = len(apts)
+    yr = TODAY.year
+    name = lambda a: f'{a[0]}({a[1]})' if a[1] else a[0]
+    ex = lambda lst, k=3: ', '.join(E(name(a)) for a in lst[:k])
+    old = [a for a in apts if a[2] and yr - a[2] >= 30]
+    corridor = [a for a in apts if a[5] == '복도식']
+    indiv = [a for a in apts if a[4].startswith('개별')]
+    central = [a for a in apts if a[4] in ('지역난방', '중앙난방')]
+    dis = [a[6] for a in apts if a[6]]
+    p = []
+    if kind == '보일러-고장':
+        p.append(f'{E(gu)} 아파트 {n}곳 중 <b>개별난방 {len(indiv)}곳</b>, <b>지역·중앙난방 {len(central)}곳</b>이에요.')
+        if central:
+            p.append(f'지역·중앙난방 단지({ex(central)} 등)는 집에 보일러가 없어서, 난방이 안 되면 업체보다 <b>관리사무소에 먼저</b> 연락해요.')
+        if indiv:
+            p.append(f'개별난방 단지({ex(indiv)} 등)는 보일러가 집마다 있어서 고장 나면 직접 업체를 불러요.')
+    elif kind == '수도-동파':
+        if corridor:
+            p.append(f'{E(gu)} 아파트 {n}곳 중 <b>복도식 단지가 {len(corridor)}곳</b>이에요({ex(corridor)} 등). 복도식은 계량기가 바깥 복도에 있어서 한파 때 특히 잘 얼어요. 한파 예보가 나오면 계량기 함부터 보온하세요.')
+        else:
+            p.append(f'{E(gu)} 아파트 {n}곳은 대부분 계단식이라 계량기가 집 안쪽이나 계단실에 있는 편이에요. 그래도 오래 집을 비울 땐 물을 가늘게 틀어 두세요.')
+    elif kind in ('누수-탐지', '하수구-막힘', '전기-고장', '유리-파손'):
+        what = {'누수-탐지': '배관이 낡아 물이 새기 쉬워요. 아래층으로 물이 샌다면 관리사무소에 먼저 알리세요',
+                '하수구-막힘': '공용 배수관이 막히는 일이 잦아요. 여러 집이 같이 막혔다면 관리사무소에 먼저 알리세요',
+                '전기-고장': '배선과 차단기 용량이 요즘 가전에 비해 작을 수 있어요. 차단기가 자주 내려가면 점검을 받아 보세요',
+                '유리-파손': '창틀이 낡아 유리만 바꾸기 어려운 경우도 있어요. 창틀 상태도 함께 봐 달라고 하세요'}[kind]
+        if old:
+            p.append(f'{E(gu)} 아파트 {n}곳 중 <b>{len(old)}곳이 지은 지 30년 넘은 단지</b>예요({ex(sorted(old, key=lambda a: a[2]))} 등). 오래된 단지는 {what}.')
+        else:
+            newest = sum(1 for a in apts if a[2] and yr - a[2] < 10)
+            p.append(f'{E(gu)} 아파트 {n}곳은 지은 지 30년 넘은 곳이 없고, 10년 안 된 단지가 {newest}곳이에요. 새 단지는 하자보수 기간이 남아 있을 수 있으니 업체 부르기 전에 관리사무소에 먼저 물어보세요.')
+    elif kind == '정화조-청소':
+        p.append(f'{E(gu)}에서 관리사무소가 있는 아파트 단지는 {n}곳이에요({ex(apts)} 등). 이런 단지는 관리사무소가 정화조를 맡아요. 단독주택·빌라·상가 건물은 건물주가 직접 청소를 맡겨야 해요.')
+    elif kind == '방역-해충':
+        if dis:
+            avg = round(sum(dis) / len(dis))
+            p.append(f'{E(gu)} 아파트 단지는 1년에 평균 <b>{avg}번</b> 단지 소독을 해요. 소독 날짜는 관리사무소 공지를 확인하고, 그 사이에 계속 나오면 집 안만 따로 방역을 맡기면 돼요.')
+    elif kind == '열쇠-도어락':
+        p.append(f'{E(gu)} 아파트 {n}곳에 사신다면, 공동현관 비밀번호나 출입카드 문제는 관리사무소가 해결해 줘요. 집 현관 도어락이 안 열릴 때만 열쇠 업체를 부르면 돼요.')
+    if not p:
+        return ''
+    big = ' · '.join(E(name(a)) for a in apts[:12])
+    return (f'<section class="card"><h2>{E(gu)} 아파트로 보면</h2><p>{" ".join(p)}</p>'
+            f'<p class="muted">{E(gu)}의 큰 단지: {big}</p>'
+            f'<p class="source">아파트 정보: 국토교통부 공동주택관리정보시스템(K-apt) 관리비 공개 단지 기준{(", " + apt_date[:4] + "." + apt_date[4:6] + "." + apt_date[6:]) if apt_date else ""}</p></section>')
+
 def write(path, content):
     fp = os.path.join(OUT, path.strip('/'), 'index.html') if path != '/' else os.path.join(OUT, 'index.html')
     os.makedirs(os.path.dirname(fp), exist_ok=True)
@@ -570,14 +628,18 @@ def main():
         p, h = region_page(r, by_region[r], set(released), centers)
         write(p, h); urls.append(p)
     guides = []
-    gregs = released if CFG.get('guides_all') else [g.split('/')[1].replace('-', ' ', 1) for g in CFG.get('released_guides', [])]
+    apts, apt_date = load_apts()
+    extra = sorted(r for r in apts if r not in released and r.split()[0] in SIDO_SHORT and re.search(r'[시군구]$', r) and len(r.split()) >= 2)
+    gregs = (released + extra) if CFG.get('guides_all') else [g.split('/')[1].replace('-', ' ', 1) for g in CFG.get('released_guides', [])]
     gkinds = list(GUIDES) if CFG.get('guides_all') else list(dict.fromkeys(g.split('/')[0] for g in CFG.get('released_guides', [])))
     for reg in gregs:
         ss = by_region.get(reg, [])
         dc = Counter(s['dong'] for s in ss if s['dong'])
         me = centers.get(reg)
         near = [r for _, r in sorted((km(me, centers[r]), r) for r in gregs if r != reg and r in centers)[:6]] if me else []
-        ctx = {'dongs': [d for d, _ in dc.most_common()], 'near': near, 'shops': len(ss) if reg in released else 0}
+        ap = apts.get(reg, [])
+        dongs = [d for d, _ in dc.most_common()] or [d for d, _ in Counter(a[1] for a in ap if a[1]).most_common()]
+        ctx = {'dongs': dongs, 'near': near, 'shops': len(ss) if reg in released else 0, 'apts': ap, 'apt_date': apt_date}
         for kind in gkinds:
             if kind in GUIDES:
                 p, h = guide_page(kind, reg, ctx)
