@@ -226,6 +226,28 @@ def hours_text(s):
         return f"{s['open']}~{s['close']}"
     return ''
 
+def book_btn(trade, region, name=''):
+    href = url_path('요청') + '?t=' + quote(trade) + '&r=' + quote(region) + ('&s=' + quote(name) if name else '')
+    return f'<a class="btn book" href="{E(href)}">예약 요청<span class="dev">개발 중</span></a>'
+
+def act_row(trade, region, name, call_html, nav):
+    return (f'<div class="actions act3">{book_btn(trade, region, name)}{call_html}'
+            f'<a class="btn ghost sm" href="{E(nav)}" target="_blank" rel="noopener">길찾기</a></div>')
+
+def lookup_btn(name, q, lat, lng, car=False):
+    return (f'<button type="button" class="btn ghost sm call lookup" data-name="{E(name)}" data-q="{E(q)}" '
+            f'data-lat="{lat or ""}" data-lng="{lng or ""}"{" data-car=\"1\"" if car else ""}><span aria-hidden="true">☎</span> 전화</button>')
+
+def store_card(rec, i, trade, region):
+    name, short, dong, lat, lng = rec
+    gu = gu_name(region)
+    q = name + ' ' + gu.split()[-1]
+    nav = f'https://map.naver.com/p/search/{quote(name + " " + gu + " " + short)}'
+    chips = f'<div class="chips"><span class="chip">{E(dong)}</span></div>' if dong else ''
+    return (f'<article class="shop" id="s{i}"><div class="shop-head"><span class="pin" aria-hidden="true">{i + 1}</span><h3>{E(name)}</h3></div>'
+            f'<p class="addr">{E(short)}</p>{chips}{act_row(trade, region, name, lookup_btn(name, q, lat, lng), nav)}'
+            f'<p class="lookup-note" hidden></p></article>')
+
 def shop_card(s, i):
     name = E(s['name'])
     t = s['type']
@@ -238,16 +260,15 @@ def shop_card(s, i):
         chips.append(f'<span class="chip">{E(since)}</span>')
     q = s['name'] + ' ' + gu_name(s['region']).split()[-1]
     if s['phone']:
-        call = f'<a class="btn dark call" href="tel:{E(re.sub(r"[^0-9]", "", s["phone"]))}"><span aria-hidden="true">☎</span> 바로 전화 <small>{E(s["phone"])}</small></a>'
+        call = f'<a class="btn ghost sm call" href="tel:{E(re.sub(r"[^0-9]", "", s["phone"]))}"><span aria-hidden="true">☎</span> 전화</a>'
     else:
-        call = (f'<button type="button" class="btn dark call lookup" data-name="{name}" data-q="{E(q)}" '
-                f'data-lat="{s["lat"] or ""}" data-lng="{s["lng"] or ""}"><span aria-hidden="true">☎</span> 바로 전화</button>')
+        call = lookup_btn(s['name'], q, s['lat'], s['lng'], car=True)
     nav = f'https://map.naver.com/p/search/{quote(q)}'
     return f'''<article class="shop" id="s{i}" data-type="{E(t)}" data-dong="{E(s['dong'])}" data-phone="{1 if s['phone'] else 0}" data-lat="{s['lat'] or ''}" data-lng="{s['lng'] or ''}">
 <div class="shop-head"><span class="pin" aria-hidden="true">{i + 1}</span><h3>{name}</h3></div>
 <p class="addr">{E(s['addr'].split(' ', 2)[2] if s['addr'].count(' ') >= 2 else s['addr'])}</p>
 <div class="chips">{''.join(chips)}</div>
-<div class="actions">{call}<a class="btn ghost" href="{E(nav)}" target="_blank" rel="noopener">길찾기</a></div>
+{f'<p class="tel">☎ {E(s["phone"])}</p>' if s['phone'] else ''}{act_row('자동차 정비', s['region'], s['name'], call, nav)}
 <p class="lookup-note" hidden></p>
 </article>'''
 
@@ -382,7 +403,22 @@ def guide_page(kind, region, ctx=None):
         near_html = f'<section class="card"><h2>가까운 지역 {E(G["name"])}</h2><div class="links">' + ''.join(
             f'<a href="{E(url_path("안내", kind, r.replace(" ", "-")))}">{E(short_region(r))}</a>' for r in near) + '</div></section>'
     ctr = ctx.get('center') or ('', '')
-    live = (f'<section class="card live-shops" data-kw="{E("|".join(G.get("kw", [G["name"]])))}" data-gu="{E(gu.split()[-1])}" data-must="{E(G.get('must', ''))}" data-area="{E(gu)}" data-lat="{ctr[0]}" data-lng="{ctr[1]}">'
+    stores = ctx.get('stores') or []
+    if stores:
+        dc = Counter(r[2] for r in stores if r[2])
+        stores = sorted(stores, key=lambda r: (-dc.get(r[2], 0), r[2], r[0]))[:300]
+        cards = ''.join(store_card(r, i, G['name'], region) for i, r in enumerate(stores))
+        total = len(ctx.get('stores'))
+        sd = ctx.get('store_date', '')
+        live_static = (f'<section class="card"><h2>{E(gu)} {E(G["name"])} 업체 {total}곳</h2>'
+            f'<div id="members" data-region="{E(region)}" data-trade="{E(G["name"])}" hidden></div>'
+            f'<p class="muted">\'전화\'를 누르면 번호를 찾아 바로 걸려요. \'예약 요청\'은 원하는 시간을 정해 업체에 요청하는 기능으로, 지금 만들고 있어요.</p>'
+            f'<div class="shops" data-page="20">{cards}</div>'
+            f'<button type="button" class="btn ghost wide more" hidden>더 보기</button>'
+            + (f'<p class="muted">그 외 {total - len(stores)}곳은 네이버에서 찾아보세요.</p>' if total > len(stores) else '')
+            + f'<p class="source">업체 이름·주소: 소상공인시장진흥공단 상가(상권)정보{(" (" + sd[:4] + "." + sd[4:6] + ")") if sd else ""}. 영업 상황이 바뀌었을 수 있어요. '
+            f'사장님이 등록하면 \'예약 답변 업체\'로 먼저 보여요. <a href="{E(url_path("사장님"))}">사장님 무료 등록</a></p></section>')
+    live = (f'<section class="card live-shops" data-kw="{E("|".join(G.get("kw", [G["name"]])))}" data-gu="{E(gu.split()[-1])}" data-must="{E(G.get('must', ''))}" data-area="{E(gu)}" data-trade="{E(G['name'])}" data-region="{E(region)}" data-lat="{ctr[0]}" data-lng="{ctr[1]}">'
             f'<h2>{E(gu)} {E(G["name"])} 업체</h2>'
             f'<div id="members" data-region="{E(region)}" data-trade="{E(G["name"])}" hidden></div>'
             f'<p class="muted live-note">누르면 바로 전화가 걸려요. 업체 목록은 카카오 지도에서 지금 찾아서 보여 줘요.</p>'
@@ -390,6 +426,8 @@ def guide_page(kind, region, ctx=None):
             f'<button type="button" class="btn ghost wide live-more" hidden>더 보기</button>'
             f'<p class="muted"><a href="https://m.search.naver.com/search.naver?query={quote(gu + " " + G.get("kw", [G["name"]])[0])}" target="_blank" rel="noopener">네이버에서 {E(gu)} {E(G["name"])} 더 찾기</a></p>'
             f'<p class="source">사장님이 내시간에에 등록하면 위쪽에 \'예약 답변 업체\'로 먼저 보이고, 손님 예약 요청을 문자로 받아요. <a href="{E(url_path("사장님"))}">사장님 무료 등록</a></p></section>')
+    if stores:
+        live = live_static
     car = ''
     if ctx.get('shops'):
         car = f'<p class="muted">차 문제라면 <a href="{E(url_path("자동차정비", slug_region(region)))}">{E(gu)} 자동차 정비소 {ctx["shops"]}곳</a>도 볼 수 있어요.</p>'
@@ -673,6 +711,8 @@ def main():
         write(p, h); urls.append(p)
     guides = []
     apts, apt_date = load_apts()
+    sp = os.path.join(ROOT, 'data', 'stores.json')
+    sdata = json.load(open(sp, encoding='utf-8')) if os.path.exists(sp) else {'kinds': {}}
     extra = sorted(r for r in apts if r not in released and r.split()[0] in SIDO_SHORT and re.search(r'[시군구]$', r) and len(r.split()) >= 2)
     gregs = (released + extra) if CFG.get('guides_all') else [g.split('/')[1].replace('-', ' ', 1) for g in CFG.get('released_guides', [])]
     gkinds = list(GUIDES) if CFG.get('guides_all') else list(dict.fromkeys(g.split('/')[0] for g in CFG.get('released_guides', [])))
@@ -683,10 +723,10 @@ def main():
         near = [r for _, r in sorted((km(me, centers[r]), r) for r in gregs if r != reg and r in centers)[:6]] if me else []
         ap = apts.get(reg, [])
         dongs = [d for d, _ in dc.most_common()] or [d for d, _ in Counter(a[1] for a in ap if a[1]).most_common()]
-        ctx = {'dongs': dongs, 'near': near, 'shops': len(ss) if reg in released else 0, 'apts': ap, 'apt_date': apt_date, 'center': centers.get(reg)}
+        ctx = {'dongs': dongs, 'near': near, 'shops': len(ss) if reg in released else 0, 'apts': ap, 'apt_date': apt_date, 'center': centers.get(reg), 'store_date': sdata.get('_date', '')}
         for kind in gkinds:
             if kind in GUIDES:
-                p, h = guide_page(kind, reg, ctx)
+                p, h = guide_page(kind, reg, {**ctx, 'stores': sdata['kinds'].get(kind, {}).get(reg, [])})
                 write(p, h); urls.append(p); guides.append((kind, p))
     for kind in gkinds:
         if CFG.get('guides_all') and kind in GUIDES:

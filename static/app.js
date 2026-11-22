@@ -48,15 +48,15 @@
       function q(kw,rad){return new Promise(function(res){var o={radius:rad,sort:S.SortBy.DISTANCE};if(b.dataset.lat)o.location=new kakao.maps.LatLng(+b.dataset.lat,+b.dataset.lng);ps.keywordSearch(kw,function(d,st){res(st===S.Status.OK?d.filter(function(x){return x.phone}):[])},o)})}
       function clean(n){return n.replace(/\(주\)|㈜|주식회사|\(합\)|\(1급\)/g,'').replace(/\([^)]*\)/g,' ').replace(/\s+/g,' ').trim()}
       function done(hit,sure){
-        if(!hit){b.disabled=false;b.innerHTML='<span aria-hidden="true">☎</span> 네이버에서 번호 찾기';b.onclick=function(e){e.stopImmediatePropagation();fallback()};note.hidden=false;note.textContent='등록된 번호를 못 찾았어요.';return}
-        var tel='tel:'+hit.phone.replace(/[^0-9]/g,''),a=document.createElement('a');a.className='btn dark call';a.href=tel;a.innerHTML='<span aria-hidden="true">☎</span> 바로 전화 <small>'+hit.phone+'</small>';b.replaceWith(a);note.hidden=false;
-        if(sure){note.textContent='카카오 지도에 등록된 번호로 연결해요.';location.href=tel}
-        else note.textContent='같은 자리의 \''+hit.place_name+'\' 번호예요. 맞으면 눌러서 전화하세요.';
+        if(!hit){b.disabled=false;b.innerHTML='<span aria-hidden="true">☎</span> '+(b.classList.contains('sm')?'번호 찾기':'네이버에서 번호 찾기');b.onclick=function(e){e.stopImmediatePropagation();fallback()};note.hidden=false;note.textContent='등록된 번호를 못 찾았어요.';return}
+        var tel='tel:'+hit.phone.replace(/[^0-9]/g,''),a=document.createElement('a');a.className=b.className.replace('lookup','').trim();a.href=tel;a.innerHTML='<span aria-hidden="true">☎</span> 전화';b.replaceWith(a);note.hidden=false;
+        if(sure){note.textContent='☎ '+hit.phone+' (카카오 지도 등록 번호)로 연결해요.';location.href=tel}
+        else note.textContent='같은 자리의 \''+hit.place_name+'\' 번호('+hit.phone+')예요. 맞으면 \'전화\'를 누르세요.';
       }
       (async function(){
         var r=await q(name,300);if(r.length)return done(r[0],true);
         r=await q(clean(name),500);if(r.length)return done(r[0],true);
-        var kws=['자동차정비','카센터','공업사','타이어'];
+        var kws=b.dataset.car?['자동차정비','카센터','공업사','타이어']:[];
         for(var i=0;i<kws.length;i++){r=(await q(kws[i],40)).filter(function(x){return +x.distance<=40&&/자동차/.test(x.category_name)});if(r.length)return done(r[0],false)}
         done(null);
       })();
@@ -110,8 +110,10 @@
               nav='https://map.naver.com/p/search/'+encodeURIComponent(x.place_name+' '+ad);
             return '<article class="shop"><div class="shop-head"><span class="pin" aria-hidden="true">'+(i+1)+'</span><h3>'+esc2(x.place_name)+'</h3></div>'+
               '<p class="addr">'+esc2(ad.split(' ').slice(2).join(' ')||ad)+'</p>'+'<div class="chips">'+(cat?'<span class="chip">'+esc2(cat)+'</span>':'')+(x._near?'<span class="chip">가까운 지역 · '+esc2(ad.split(' ').slice(0,2).join(' '))+'</span>':'')+'</div>'+
-              '<div class="actions"><a class="btn dark call" href="tel:'+esc2(x.phone.replace(/[^0-9]/g,''))+'"><span aria-hidden="true">☎</span> 바로 전화 <small>'+esc2(x.phone)+'</small></a>'+
-              '<a class="btn ghost" href="'+esc2(nav)+'" target="_blank" rel="noopener">길찾기</a></div></article>'}
+              '<p class="tel">☎ '+esc2(x.phone)+'</p>'+
+              '<div class="actions act3"><a class="btn book" href="/요청/?t='+encodeURIComponent(live.dataset.trade||'')+'&r='+encodeURIComponent(live.dataset.region||'')+'&s='+encodeURIComponent(x.place_name)+'">예약 요청<span class="dev">개발 중</span></a>'+
+              '<a class="btn ghost sm call" href="tel:'+esc2(x.phone.replace(/[^0-9]/g,''))+'"><span aria-hidden="true">☎</span> 전화</a>'+
+              '<a class="btn ghost sm" href="'+esc2(nav)+'" target="_blank" rel="noopener">길찾기</a></div></article>'}
           function more(){var next=all.slice(shown,shown+10);list.insertAdjacentHTML('beforeend',next.map(function(x,j){return card(x,shown+j)}).join(''));shown+=next.length;moreB.hidden=shown>=all.length}
           list.innerHTML='';more();moreB.addEventListener('click',more);
         })();

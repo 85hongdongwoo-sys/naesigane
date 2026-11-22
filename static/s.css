@@ -166,3 +166,9 @@ main{max-width:720px;margin:0 auto;padding:0 16px 24px}
 .call small{font-weight:600;font-size:13px;opacity:.85;margin-left:2px}
 h3.sub{font-size:15px;margin:16px 0 8px;color:var(--muted,#6b7684)}
 h3.sub:first-of-type{margin-top:4px}
+
+.actions.act3{grid-template-columns:1fr auto auto}
+.btn.sm{min-height:44px;padding:0 10px;font-size:14px;font-weight:700;white-space:nowrap}
+.btn.book{white-space:nowrap;background:#fff;color:#1B64DA;border:2px dashed #1B64DA;flex-direction:column;gap:0;line-height:1.15;min-height:44px;padding:4px 10px}
+.btn.book .dev{font-size:11px;font-weight:700;color:#FF8A1F}
+.tel{margin:6px 0 0;font-size:14px;color:#4E5968;font-weight:600}
