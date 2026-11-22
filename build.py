@@ -13,6 +13,7 @@ from collections import Counter, defaultdict
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(ROOT, '_site')
 CFG = json.load(open(os.path.join(ROOT, 'config.json'), encoding='utf-8'))
+RELEASED = []  # main()에서 채움: 공개된 지역 전체
 TODAY = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).date()  # 한국 날짜
 BASE = CFG['base_url'].rstrip('/')
 E = html.escape
@@ -191,7 +192,7 @@ def page(title, desc, path, body, crumbs=None, jsonld=None, extra_head='', noind
 <p><a href="{E(url_path('소개'))}">소개</a> · <a href="{E(url_path('정보-수정-삭제-요청'))}">정보 수정·삭제 요청</a> · <a href="{E(url_path('개인정보처리방침'))}">개인정보처리방침</a></p>
 <p class="muted">업체 정보는 공공데이터를 바탕으로 하며 실제와 다를 수 있어요.</p>
 </footer>
-<script>window.NSG={{kakao:{json.dumps(CFG.get('kakao_js_key') or '')},api:{json.dumps(CFG.get('supabase_url') or '')},key:{json.dumps(CFG.get('supabase_anon_key') or '')},regions:{json.dumps(CFG['released_regions'], ensure_ascii=False)},sms:{'true' if CFG.get('sms_enabled') else 'false'}}};
+<script>window.NSG={{kakao:{json.dumps(CFG.get('kakao_js_key') or '')},api:{json.dumps(CFG.get('supabase_url') or '')},key:{json.dumps(CFG.get('supabase_anon_key') or '')},regions:{json.dumps(sorted(RELEASED) if path.startswith(url_path('요청')) else [], ensure_ascii=False)},sms:{'true' if CFG.get('sms_enabled') else 'false'}}};
 window.NSG.call=function(fn,args){{return fetch(NSG.api+'/rest/v1/rpc/'+fn,{{method:'POST',headers:{{'apikey':NSG.key,'Authorization':'Bearer '+NSG.key,'Content-Type':'application/json'}},body:JSON.stringify(args)}}).then(function(r){{return r.json().then(function(j){{if(!r.ok)throw new Error((j&&j.message)||'잠시 뒤 다시 해 주세요');return j}})}})}};</script>
 <script src="/app.js" defer></script>
 {scripts}
@@ -350,9 +351,23 @@ def region_page(region, shops, all_regions, region_centers):
 
 GUIDES = json.load(open(os.path.join(ROOT, 'data', 'guides.json'), encoding='utf-8'))
 
-def guide_page(kind, region):
+def guide_page(kind, region, ctx=None):
     G = GUIDES[kind]
     gu = gu_name(region)
+    ctx = ctx or {}
+    dongs = ctx.get('dongs') or []
+    local = ''
+    if dongs:
+        local = (f'<section class="card"><h2>{E(gu)} 어디서든 부를 수 있게</h2><p>{E(gu)}에는 {E("·".join(dongs[:12]))} 같은 동네가 있어요. '
+                 f'업체에 전화하거나 요청할 때 <b>동 이름과 아파트·건물 이름</b>을 함께 말하면 이동 시간과 출장비를 더 정확히 들을 수 있어요.</p></section>')
+    near = ctx.get('near') or []
+    near_html = ''
+    if near:
+        near_html = f'<section class="card"><h2>가까운 지역 {E(G["name"])}</h2><div class="links">' + ''.join(
+            f'<a href="{E(url_path("안내", kind, r.replace(" ", "-")))}">{E(short_region(r))}</a>' for r in near) + '</div></section>'
+    car = ''
+    if ctx.get('shops'):
+        car = f'<p class="muted">차 문제라면 <a href="{E(url_path("자동차정비", slug_region(region)))}">{E(gu)} 자동차 정비소 {ctx["shops"]}곳</a>도 볼 수 있어요.</p>'
     fill = lambda t: t.replace('{gu}', gu).replace('{region}', region)
     path = url_path('안내', kind, region.replace(' ', '-'))
     title = fill(G['title']).replace('{sr}', short_region(region)) + ' | 내시간에'
@@ -372,11 +387,13 @@ def guide_page(kind, region):
 {extra}
 {f'<section class="card"><h2>업체에 전화할 때 꼭 물어볼 것</h2><ul class="plain">{ask}</ul></section>' if ask else ''}
 <section class="card soon"><h2>원하는 시간에 맞춰 부르는 기능, 준비 중이에요</h2><p>시간과 예산을 정해 요청하면 {E(gu)} 업체 사장님들이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. <a href="{E(url_path('요청'))}?t={quote(G['name'])}&amp;r={quote(region)}">어떻게 요청하는지 미리 보기</a></p></section>
+{local}
 {faq_html(faqs)}
-<section class="card"><h2>{E(gu)}의 다른 급한 일</h2><div class="links">{others}</div></section>
+<section class="card"><h2>{E(gu)}의 다른 급한 일</h2><div class="links">{others}</div>{car}</section>
+{near_html}
 {owner_cta(gu + ' ' + G['name'])}
 <p class="source">이 안내는 일반적인 정보예요. 집 상태에 따라 방법과 비용이 달라질 수 있어요. 위험하다고 느껴지면 혼자 하지 말고 전문가를 부르세요.</p>'''
-    crumbs = [('홈', '/'), (f'{gu} {G["name"]}', path)]
+    crumbs = [('홈', '/'), (G['name'], url_path('안내', kind)), (f'{gu} {G["name"]}', path)]
     return path, page(title, desc, path, body, crumbs, [faq_ld(faqs)])
 
 # ---------------------------------------------------------------- simple pages
@@ -401,7 +418,7 @@ def static_pages():
 <label class="fld"><span>요청 알림 받을 휴대폰</span><input name="mobile" required type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
 <label class="fld"><span>손님에게 보일 업체 전화 (선택)</span><input name="public_phone" type="tel" placeholder="032-000-0000"></label>
 <label class="fld"><span>업종</span><select name="trade" required>{''.join(f'<option>{E(t)}</option>' for t in ['자동차 정비','하수구 막힘','보일러 고장','수도 동파','누수','열쇠·도어락'])}</select></label>
-<label class="fld"><span>지역</span><select name="region" required>{''.join(f'<option>{E(r)}</option>' for r in CFG['released_regions'])}</select></label>
+<label class="fld"><span>지역</span><select name="region" required>{''.join(f'<option>{E(r)}</option>' for r in sorted(RELEASED))}</select></label>
 <label class="fld"><span>업체 주소</span><input name="address" maxlength="120"></label>
 <label class="fld"><span>대표 가격대 (선택)</span><input name="price_note" maxlength="100" placeholder="예: 엔진오일 5만~7만 원(공임 포함)"></label>
 <label class="agree"><input type="checkbox" name="sms_consent" required><span>손님 예약 요청 알림 문자를 받는 데 동의해요. 언제든 그만 받을 수 있어요.</span></label>
@@ -434,6 +451,17 @@ def static_pages():
 
 # ---------------------------------------------------------------- index pages
 
+def guide_index(kind, regions):
+    G = GUIDES[kind]
+    path = url_path('안내', kind)
+    by_sido = defaultdict(list)
+    for r in sorted(regions):
+        by_sido[r.split()[0]].append(r)
+    secs = ''.join(f'<section class="card" id="{E(sd)}"><h2>{E(sd)}</h2><div class="links">' + ''.join(
+        f'<a href="{E(url_path("안내", kind, r.replace(" ", "-")))}">{E(gu_name(r))}</a>' for r in rs) + '</div></section>' for sd, rs in by_sido.items())
+    body = f'''<section class="hero"><h1>{E(G['name'])}, {E(G['h1_tail'])}</h1><p class="lead">사는 지역을 고르면 {E(G['name'])} 때 할 일과 업체에 물어볼 것을 지역에 맞춰 볼 수 있어요.</p></section>{secs}'''
+    return path, page(f'{G["name"]} 지역별 안내 | 내시간에', f'{G["name"]} 때 바로 할 일과 업체 부르는 법을 시·군·구별로 안내해요.', path, body, [('홈', '/'), (G['name'], path)])
+
 def trade_index(regions_count):
     path = url_path('자동차정비')
     by_sido = defaultdict(list)
@@ -452,13 +480,13 @@ def home(regions_count, region_centers, guides):
         idx.append({'t': '자동차 정비', 'n': f'{short_region(r)} 자동차 정비소', 's': f'{c}곳 · 전화번호·위치', 'u': url_path('자동차정비', slug_region(r)),
                     'k': f'자동차 정비 정비소 카센터 엔진오일 타이어 배터리 {r}', 'lat': region_centers[r][0], 'lng': region_centers[r][1]})
     for kind, g in guides:
-        G = GUIDES[kind]; reg = g.strip('/').split('/')[-1].replace('-', ' ', 1)
+        G = GUIDES[kind]; reg = g.strip('/').split('/')[-1].replace('-', ' ')
         ctr = region_centers.get(reg, (0, 0))
         idx.append({'t': G['tile'], 'n': f'{short_region(reg)} {G["name"]}', 's': G['h1_tail'], 'u': g,
                     'k': f'{G["name"]} {G["tile"]} {reg}', 'lat': ctr[0], 'lng': ctr[1]})
     live = {'자동차 정비': url_path('자동차정비')}
     for kind, g in guides:
-        live.setdefault(GUIDES[kind]['tile'], g)
+        live.setdefault(GUIDES[kind]['tile'], url_path('안내', kind) if CFG.get('guides_all') else g)
     order = ['보일러 고장', '수도 동파', '하수구 막힘', '누수 탐지', '열쇠·도어락', '자동차 정비']
     hot = [t for t in order if t in live]
     icons = {'보일러 고장': '♨', '수도 동파': '❄', '하수구 막힘': '⤓', '누수 탐지': '💧', '열쇠·도어락': '🔑', '자동차 정비': '🚗'}
@@ -485,7 +513,8 @@ def home(regions_count, region_centers, guides):
 <section class="card"><h2>열린 동네</h2><div class="links">{open_regions}</div><p class="muted">동네와 업종은 차례로 늘어나요.</p></section>
 <section class="card"><h2>곧 열려요</h2>{soon}</section>
 {owner_cta('동네 업체')}
-<script type="application/json" id="regions">{json.dumps(idx, ensure_ascii=False)}</script>'''
+<script type="application/json" id="regions" data-src="/search.json">[]</script>'''
+    open(os.path.join(OUT, 'search.json'), 'w', encoding='utf-8').write(json.dumps(idx, ensure_ascii=False, separators=(',', ':')))
     ld = [{'@context': 'https://schema.org', '@type': 'WebSite', 'name': '내시간에', 'url': BASE + '/'}]
     return '/', page('내시간에 - 내 시간에 예약방문, 전화하세요 | 동네 정비소·출장 업체', '내 시간에 예약방문, 전화하세요. 보일러·하수구·누수·열쇠 같은 출장 수리와 자동차 정비소를 동네별로 찾고, 원하는 시간에 맞춰 예약하세요.', '/', body, None, ld)
 
@@ -531,6 +560,7 @@ def main():
         if pts:
             centers[r] = (round(sum(p[0] for p in pts) / len(pts), 4), round(sum(p[1] for p in pts) / len(pts), 4))
     released = release_list(by_region, centers)
+    RELEASED[:] = released
     missing = [r for r in CFG['released_regions'] if r not in released]
     if os.path.exists(OUT):
         shutil.rmtree(OUT)
@@ -540,12 +570,21 @@ def main():
         p, h = region_page(r, by_region[r], set(released), centers)
         write(p, h); urls.append(p)
     guides = []
-    for g in CFG.get('released_guides', []):
-        kind, reg = g.split('/')
-        reg = reg.replace('-', ' ', 1)
-        if kind in GUIDES:
-            p, h = guide_page(kind, reg)
-            write(p, h); urls.append(p); guides.append((kind, p))
+    gregs = released if CFG.get('guides_all') else [g.split('/')[1].replace('-', ' ', 1) for g in CFG.get('released_guides', [])]
+    gkinds = list(GUIDES) if CFG.get('guides_all') else list(dict.fromkeys(g.split('/')[0] for g in CFG.get('released_guides', [])))
+    for reg in gregs:
+        ss = by_region.get(reg, [])
+        dc = Counter(s['dong'] for s in ss if s['dong'])
+        me = centers.get(reg)
+        near = [r for _, r in sorted((km(me, centers[r]), r) for r in gregs if r != reg and r in centers)[:6]] if me else []
+        ctx = {'dongs': [d for d, _ in dc.most_common()], 'near': near, 'shops': len(ss) if reg in released else 0}
+        for kind in gkinds:
+            if kind in GUIDES:
+                p, h = guide_page(kind, reg, ctx)
+                write(p, h); urls.append(p); guides.append((kind, p))
+    for kind in gkinds:
+        if CFG.get('guides_all') and kind in GUIDES:
+            p, h = guide_index(kind, gregs); write(p, h); urls.append(p)
     rc = {r: len(by_region[r]) for r in released}
     p, h = trade_index(rc); write(p, h); urls.append(p)
     p, h = home(rc, centers, guides); write(p, h); urls.insert(0, p)

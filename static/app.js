@@ -87,11 +87,12 @@
       '<div class="actions two-btn">'+(o.phone?'<a class="btn dark" href="tel:'+e(o.phone.replace(/[^0-9]/g,''))+'">☎ 바로 전화</a>':'')+'<a class="btn blue" href="/요청/?t='+encodeURIComponent(mem.dataset.trade)+'&r='+encodeURIComponent(mem.dataset.region)+'">예약 요청</a></div></article>'}).join('')})}
   // ---- 첫 화면 검색 (업종 + 동네)
   var data=$('#regions'),q=$('#q'),out=$('#results');
-  if(data&&q){var R=JSON.parse(data.textContent);
+  if(data&&q){var R=JSON.parse(data.textContent);if(data.dataset.src){fetch(data.dataset.src).then(function(r){return r.json()}).then(function(j){R=j;if(q.value)find(q.value)})}
     function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
     function show(list,empty){out.innerHTML=list.slice(0,8).map(function(r){return '<a class="res" href="'+r.u+'"><b>'+esc(r.n)+'</b><span>'+esc(r.s)+'</span></a>'}).join('')||'<p class="muted">'+(empty||'아직 열리지 않은 업종·동네예요. 곧 늘어나요.')+'</p>'}
-    function find(v){v=v.replace(/\s/g,'');if(!v){out.innerHTML='';return}var words=v.match(/.{1,2}/g)||[];
-      show(R.filter(function(r){var k=(r.k+r.n).replace(/\s/g,'');return k.indexOf(v)>=0||words.every(function(w){return k.indexOf(w)>=0})}))}
+    function find(raw){var v=raw.replace(/\s/g,'');if(!v){out.innerHTML='';return}
+      var parts=raw.trim().split(/\s+/),chunks=v.match(/.{1,2}/g)||[];
+      show(R.filter(function(r){var k=(r.k+r.n).replace(/\s/g,'');return k.indexOf(v)>=0||parts.every(function(w){return k.indexOf(w)>=0})||(parts.length==1&&chunks.every(function(w){return k.indexOf(w)>=0}))}))}
     q.addEventListener('input',function(){find(q.value)});
     $$('.qchip').forEach(function(c){c.addEventListener('click',function(){q.value=c.dataset.q;find(q.value)})});
     $('#near').addEventListener('click',function(){

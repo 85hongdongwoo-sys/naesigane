@@ -24,5 +24,6 @@
     "first": 50,
     "per_day": 30
   },
-  "release_all": true
+  "release_all": true,
+  "guides_all": true
 }
