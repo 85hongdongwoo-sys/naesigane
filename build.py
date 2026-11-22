@@ -312,7 +312,7 @@ def region_page(region, shops, all_regions, region_centers):
 </div>
 <button type="button" class="btn ghost wide more" hidden>더 보기</button>
 </section>
-<section class="card soon"><h2>원하는 시간에 맞춰 예약하는 기능, 준비 중이에요</h2><p>시간을 정해 요청하면 {E(gu)} 정비소 사장님이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. 사장님 가입이 시작되면 이 동네부터 열려요.</p></section>
+<section class="card soon"><h2>원하는 시간에 맞춰 예약하는 기능, 준비 중이에요</h2><p>시간을 정해 요청하면 {E(gu)} 정비소 사장님이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. 사장님 가입이 시작되면 이 동네부터 열려요. <a href="{E(url_path('요청'))}?t={quote('자동차 정비')}">어떻게 요청하는지 미리 보기</a></p></section>
 {types_html}
 {faq_html(faqs)}
 {near_html}
@@ -323,36 +323,37 @@ def region_page(region, shops, all_regions, region_centers):
     head = '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>'
     return path, page(title, desc, path, body, crumbs, ld, extra_head=head)
 
-# ---------------------------------------------------------------- guide page (하수구)
+# ---------------------------------------------------------------- guide pages
 
-def guide_hasugu(region):
+GUIDES = json.load(open(os.path.join(ROOT, 'data', 'guides.json'), encoding='utf-8'))
+
+def guide_page(kind, region):
+    G = GUIDES[kind]
     gu = gu_name(region)
-    path = url_path('안내', '하수구-막힘', region.replace(' ', '-'))
-    title = f'{short_region(region)} 하수구 막힘 - 업체 부르기 전 해 볼 것 3가지 | 내시간에'
-    desc = f'{region}에서 변기·싱크대·욕실 바닥이 막혔을 때 직접 해 볼 것 3가지, 업체를 불러야 하는 때, 관리사무소에 먼저 연락할 때를 정리했어요.'
-    steps = [
-        ('뜨거운 물 + 주방세제 붓기', '세제를 반 컵쯤 넣고 뜨거운 물(끓는 물은 배관이 상할 수 있어 안 돼요)을 천천히 부은 뒤 10분 기다려요. 기름 때문에 막힌 싱크대에 잘 들어요.'),
-        ('압축기(뚫어뻥)로 밀고 당기기', '구멍을 완전히 덮고 물이 조금 찬 상태에서 10번쯤 세게 당겨요. 변기 막힘은 이걸로 풀리는 경우가 많아요.'),
-        ('배수구 거름망과 머리카락 빼기', '욕실 바닥이면 거름망을 열고 머리카락 뭉치를 꺼내요. 욕실 막힘의 가장 흔한 원인이에요.'),
-    ]
-    faqs = [
-        ('세 가지를 다 해 봤는데도 안 내려가요.', '배관 안쪽 깊은 곳이 막힌 경우예요. 무리하게 약품을 많이 부으면 배관이 상할 수 있으니, 이때는 업체를 부르는 게 좋아요.'),
-        ('여러 집이 같이 막힌 것 같아요.', '아파트에서 아래층까지 역류하거나 여러 집이 함께 막히면 공용 배관 문제일 수 있어요. 관리사무소에 먼저 알려 주세요.'),
-        ('밤이나 주말에도 업체가 오나요?', '업체마다 달라요. 야간·주말에는 출장비가 더 붙는 경우가 많으니 전화할 때 출장비를 꼭 먼저 물어보세요.'),
-        ('업체를 부르면 무엇을 물어봐야 하나요?', '출장비가 따로 있는지, 뚫지 못하면 비용을 받는지, 내시경·고압 세척이 필요하면 얼마인지 미리 물어보면 나중에 다툼이 줄어요.'),
-    ]
-    body = f'''<section class="hero"><h1>{E(gu)} 하수구 막힘,<br>업체 부르기 전 해 볼 것 3가지</h1>
-<p class="lead">{E(region)}에서 변기나 싱크대, 욕실 바닥이 막혔을 때 먼저 볼 것들을 정리했어요. 해 보고도 안 내려가면 그때 업체를 부르세요.</p></section>
-<div class="warn"><b>물이 넘치고 있다면</b> 먼저 변기 뒤 밸브나 세탁기 수도를 잠그세요. 아랫집으로 새면 관리사무소에도 바로 알려 주세요.</div>
-<section class="card"><h2>업체 부르기 전에 해 볼 것</h2><ol class="steps">{''.join(f'<li><b>{E(t)}</b><span>{E(d)}</span></li>' for t, d in steps)}</ol></section>
-<section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">
-<li>세 가지를 다 해도 물이 안 내려갈 때</li><li>막혔다 풀렸다를 자주 반복할 때 (배관 안쪽에 때가 쌓인 경우가 많아요)</li><li>하수구에서 냄새가 계속 올라올 때</li><li>바닥 배수구에서 물이 거꾸로 올라올 때</li></ul></section>
-<section class="card"><h2>관리사무소 먼저? 업체 먼저?</h2><p>아파트에서 <b>여러 집이 같이 쓰는 공용 배관</b>이 막혔으면 관리사무소가 처리해요. <b>우리 집 안쪽 배관</b>만 막혔으면 출장 업체를 부르면 돼요. 아래층으로 물이 새거나 여러 집이 함께 막혔다면 관리사무소에 먼저 연락하세요.</p></section>
+    fill = lambda t: t.replace('{gu}', gu).replace('{region}', region)
+    path = url_path('안내', kind, region.replace(' ', '-'))
+    title = fill(G['title']).replace('{sr}', short_region(region)) + ' | 내시간에'
+    desc = fill(G['desc'])
+    warn = f'<div class="warn">{G["warn"]}</div>' if G.get('warn') else ''
+    steps = ''.join(f'<li><b>{E(t)}</b><span>{E(d)}</span></li>' for t, d in G['steps'])
+    when = ''.join(f'<li>{E(w)}</li>' for w in G['call_when'])
+    extra = ''.join(f'<section class="card"><h2>{E(fill(h))}</h2><p>{fill(b)}</p></section>' for h, b in G.get('sections', []))
+    ask = ''.join(f'<li>{E(a)}</li>' for a in G.get('ask', []))
+    faqs = [(fill(q), fill(a)) for q, a in G['faqs']]
+    others = ''.join(f'<a href="{E(url_path("안내", k, region.replace(" ", "-")))}">{E(gu)} {E(GUIDES[k]["name"])}</a>' for k in GUIDES if k != kind)
+    body = f'''<section class="hero"><h1>{E(gu)} {E(G['name'])},<br>{E(G['h1_tail'])}</h1>
+<p class="lead">{E(fill(G['lead']))}</p></section>
+{warn}
+<section class="card"><h2>{E(G['steps_title'])}</h2><ol class="steps">{steps}</ol></section>
+<section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul></section>
+{extra}
+{f'<section class="card"><h2>업체에 전화할 때 꼭 물어볼 것</h2><ul class="plain">{ask}</ul></section>' if ask else ''}
+<section class="card soon"><h2>원하는 시간에 맞춰 부르는 기능, 준비 중이에요</h2><p>시간과 예산을 정해 요청하면 {E(gu)} 업체 사장님들이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. <a href="{E(url_path('요청'))}?t={quote(G['name'] if G['name'] != '누수' else '누수')}">어떻게 요청하는지 미리 보기</a></p></section>
 {faq_html(faqs)}
-{owner_cta(gu + ' 하수구')}
-<p class="source">이 안내는 일반적인 정보예요. 배관 상태에 따라 방법과 비용이 달라질 수 있어요.</p>'''
-    crumbs = [('홈', '/'), ('하수구 막힘', path), (gu, path)]
-    crumbs = [('홈', '/'), (f'{gu} 하수구 막힘', path)]
+<section class="card"><h2>{E(gu)}의 다른 급한 일</h2><div class="links">{others}</div></section>
+{owner_cta(gu + ' ' + G['name'])}
+<p class="source">이 안내는 일반적인 정보예요. 집 상태에 따라 방법과 비용이 달라질 수 있어요. 위험하다고 느껴지면 혼자 하지 말고 전문가를 부르세요.</p>'''
+    crumbs = [('홈', '/'), (f'{gu} {G["name"]}', path)]
     return path, page(title, desc, path, body, crumbs, [faq_ld(faqs)])
 
 # ---------------------------------------------------------------- simple pages
@@ -382,6 +383,9 @@ def static_pages():
 <section class="card"><h2>2. 업체 정보</h2><p>업체 이름, 주소, 업종, 전화번호, 영업시간은 공공데이터에서 가져온 공개 정보예요. 출처: 국토교통부 전국자동차정비업체표준데이터. 수집 출처·이용 목적 안내와 처리 정지 요청은 <a href="{E(url_path('정보-수정-삭제-요청'))}">정보 수정·삭제 요청</a>으로 할 수 있어요.</p></section>
 <section class="card"><h2>3. 외부 서비스</h2><p>위치 지도는 오픈스트리트맵, 전화번호 찾기는 카카오 지도 서비스를 쓸 수 있어요. 이때 손님 브라우저가 해당 서비스에 직접 접속해요. 방문 통계를 위해 쿠키를 쓰는 분석 도구를 붙이면 이곳에 알려 드려요.</p></section>
 <section class="card"><h2>4. 문의</h2><p>개인정보 관련 문의: {em}</p></section>''')
+    p = url_path('요청')
+    pages[p] = page('원하는 시간에 예약 요청 (미리 보기) | 내시간에', '원하는 날짜·시간·예산을 정해 동네 업체에 한 번에 요청하는 화면 미리 보기예요.', p,
+        '<div id="req" aria-live="polite"><noscript>이 화면은 자바스크립트가 필요해요.</noscript></div>', noindex=True, scripts='<script src="/req.js" defer></script>')
     p = url_path('소개')
     pages[p] = page('내시간에 소개 | 원하는 시간에 맞춰 답하는 동네 업체', '손님이 원하는 시간을 먼저 정하면 동네 업체가 맞춰 답하는 서비스, 내시간에를 소개해요.', p, f'''<section class="hero"><h1>돈 내는 손님이<br>시간을 먼저 정해요</h1><p class="lead">내시간에는 동네 업체를 찾고, 원하는 시간에 맞춰 예약할 수 있게 돕는 서비스예요.</p></section>
 <section class="card"><h2>지금 할 수 있는 것</h2><ul class="plain"><li>지역별 자동차 정비소 목록, 전화번호, 위치, 정비 종류 보기</li><li>번호를 눌러 바로 전화하기</li><li>막힘·누수처럼 급한 일에 먼저 해 볼 것 안내</li></ul></section>
@@ -410,8 +414,8 @@ def home(regions_count, region_centers, guides):
         ('상가·업소', ['자동차 정비', '사다리차', '셔터·자동문 수리', '업소용 냉장고', '간판 수리', '팝업 인테리어']),
     ]
     live = {'자동차 정비': url_path('자동차정비')}
-    for g in guides:
-        live.setdefault('하수구 막힘', g)
+    for kind, g in guides:
+        live.setdefault(GUIDES[kind]['tile'], g)
     gh = ''
     for name, items in groups:
         tiles = ''.join((f'<a class="tile on" href="{E(live[i])}">{E(i)}</a>' if i in live else f'<span class="tile">{E(i)}<small>준비 중</small></span>') for i in items)
@@ -457,9 +461,9 @@ def main():
     for g in CFG.get('released_guides', []):
         kind, reg = g.split('/')
         reg = reg.replace('-', ' ', 1)
-        if kind == '하수구-막힘':
-            p, h = guide_hasugu(reg)
-            write(p, h); urls.append(p); guides.append(p)
+        if kind in GUIDES:
+            p, h = guide_page(kind, reg)
+            write(p, h); urls.append(p); guides.append((kind, p))
     rc = {r: len(by_region[r]) for r in released}
     p, h = trade_index(rc); write(p, h); urls.append(p)
     p, h = home(rc, centers, guides); write(p, h); urls.insert(0, p)
