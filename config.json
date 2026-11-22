@@ -15,8 +15,14 @@
     "누수-탐지/인천광역시-연수구",
     "열쇠-도어락/인천광역시-연수구"
   ],
-  "_comment": "released_regions에 지역을 추가하면 그 지역 페이지가 만들어지고 사이트맵에 들어가요. 색인 비율을 보면서 조금씩 늘리세요.",
+  "_comment": "지역 페이지는 전부 만들어 두고, release_plan에 따라 첫날 first곳, 그 뒤 매일 per_day곳씩 자동으로 열어요 (순서는 data/release_order.json, 전화번호 많은 지역부터). 한 번에 다 열려면 release_all을 true로.",
   "supabase_url": "",
   "supabase_anon_key": "",
-  "sms_enabled": false
+  "sms_enabled": false,
+  "release_plan": {
+    "start": "2026-11-22",
+    "first": 50,
+    "per_day": 30
+  },
+  "release_all": true
 }

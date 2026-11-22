@@ -13,7 +13,7 @@ from collections import Counter, defaultdict
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(ROOT, '_site')
 CFG = json.load(open(os.path.join(ROOT, 'config.json'), encoding='utf-8'))
-TODAY = datetime.date.today()
+TODAY = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).date()  # 한국 날짜
 BASE = CFG['base_url'].rstrip('/')
 E = html.escape
 
@@ -28,9 +28,18 @@ TYPE_DESC = {
 SAMPLE_REGIONS = {'yeonsu': '인천광역시 연수구', 'jemulpo': '인천광역시 제물포구'}
 SIDO_SHORT = {'서울특별시': '서울', '부산광역시': '부산', '대구광역시': '대구', '인천광역시': '인천', '광주광역시': '광주', '대전광역시': '대전',
               '울산광역시': '울산', '세종특별자치시': '세종', '경기도': '경기', '강원특별자치도': '강원', '충청북도': '충북', '충청남도': '충남',
-              '전북특별자치도': '전북', '전라남도': '전남', '경상북도': '경북', '경상남도': '경남', '제주특별자치도': '제주'}
+              '전북특별자치도': '전북', '전라남도': '전남', '전남광주통합특별시': '전남광주', '경상북도': '경북', '경상남도': '경남', '제주특별자치도': '제주'}
 
 # ---------------------------------------------------------------- data
+
+# 옛 시·도 이름 → 지금 이름 (2026.7.1 전남광주통합특별시 출범 등)
+SIDO_RENAME = {'광주광역시': '전남광주통합특별시', '전라남도': '전남광주통합특별시', '강원도': '강원특별자치도', '전라북도': '전북특별자치도'}
+
+def norm_addr(addr):
+    a = addr.split(' ', 1)
+    if len(a) == 2 and a[0] in SIDO_RENAME:
+        return SIDO_RENAME[a[0]] + ' ' + a[1]
+    return addr
 
 def region_of(addr):
     a = addr.split()
@@ -62,7 +71,7 @@ def load_shops():
             except UnicodeDecodeError:
                 continue
         for r in csv.DictReader(text.splitlines()):
-            addr = (r.get('소재지도로명주소') or r.get('소재지지번주소') or '').strip()
+            addr = norm_addr((r.get('소재지도로명주소') or r.get('소재지지번주소') or '').strip())
             shops.append(dict(name=r.get('자동차정비업체명', '').strip(), type=norm_code(r.get('자동차정비업체종류')), addr=addr,
                               lat=r.get('위도'), lng=r.get('경도'), reg=r.get('사업등록일자', ''), area=r.get('면적', ''),
                               status=norm_code(r.get('영업상태')), open=r.get('운영시작시각', ''), close=r.get('운영종료시각', ''),
@@ -430,7 +439,7 @@ def trade_index(regions_count):
     by_sido = defaultdict(list)
     for r, c in sorted(regions_count.items()):
         by_sido[r.split()[0]].append((r, c))
-    secs = ''.join(f'<section class="card"><h2>{E(sido)}</h2><div class="links">' + ''.join(
+    secs = ''.join(f'<section class="card" id="{E(sido)}"><h2>{E(sido)}</h2><div class="links">' + ''.join(
         f'<a href="{E(url_path("자동차정비", slug_region(r)))}">{E(gu_name(r))} <span class="muted">{c}곳</span></a>' for r, c in rs) + '</div></section>'
         for sido, rs in by_sido.items())
     body = f'''<section class="hero"><h1>지역별 자동차 정비소</h1><p class="lead">동네를 고르면 정비소 전화번호·위치·정비 종류를 볼 수 있어요.</p></section>{secs}'''
@@ -461,7 +470,11 @@ def home(regions_count, region_centers, guides):
         ('상가·업소', ['사다리차', '셔터·자동문 수리', '업소용 냉장고', '간판 수리', '팝업 인테리어']),
     ]
     soon = ''.join(f'<p class="soon-row"><b>{E(n)}</b> {" · ".join(E(i) for i in items if i not in live)}</p>' for n, items in groups)
-    open_regions = ''.join(f'<a href="{E(url_path("자동차정비", slug_region(r)))}">{E(short_region(r))}</a>' for r in regions_count)
+    if len(regions_count) <= 12:
+        open_regions = ''.join(f'<a href="{E(url_path("자동차정비", slug_region(r)))}">{E(short_region(r))}</a>' for r in regions_count)
+    else:
+        sc = Counter(r.split()[0] for r in regions_count)
+        open_regions = ''.join(f'<a href="{E(url_path("자동차정비"))}#{E(sd)}">{E(SIDO_SHORT.get(sd, sd))} <span class="muted">{n}개 지역</span></a>' for sd, n in sorted(sc.items(), key=lambda x: -x[1]))
     body = f'''<section class="hero home"><h1>내 시간에<br><span class="hl">예약방문, 전화</span>하세요</h1><p class="lead">보일러·하수구·누수 같은 출장 수리부터 자동차 정비까지, 동네 업체를 모았어요. 원하는 시간에 맞춰 예약하고 방문하거나, 지금 바로 전화하세요.</p></section>
 <section class="card find"><h2>무엇이 필요하세요?</h2>
 <label class="search"><span class="sr">업종이나 동네 검색</span><input id="q" type="search" placeholder="예: 보일러, 하수구, 연수구 정비" autocomplete="off"></label>
@@ -483,6 +496,30 @@ def write(path, content):
     os.makedirs(os.path.dirname(fp), exist_ok=True)
     open(fp, 'w', encoding='utf-8').write(content)
 
+def release_list(by_region, centers):
+    """공개할 지역 목록.
+    순서는 data/release_order.json 에 한 번 정해 두고 계속 써요 (데이터가 바뀌어도 이미 연 지역이 닫히지 않게).
+    config.json release_plan: start 날짜부터 첫날 first 곳, 그 뒤 하루 per_day 곳씩 열어요. release_all 이 true 면 전부 열어요."""
+    ok = {r for r, ss in by_region.items() if len(ss) >= 3 and r in centers}
+    order_path = os.path.join(ROOT, 'data', 'release_order.json')
+    order = json.load(open(order_path, encoding='utf-8')) if os.path.exists(order_path) else []
+    pinned = [r for r in CFG['released_regions'] if r in ok]
+    def score(r):
+        ss = by_region[r]
+        return (-round(sum(1 for s in ss if s['phone']) / len(ss), 1), -len(ss), r)
+    new = sorted((r for r in ok if r not in order and r not in pinned), key=score)
+    if new or any(r not in order for r in pinned):
+        order = pinned + [r for r in order if r not in pinned] + new
+        json.dump(order, open(order_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=0)
+    order = [r for r in order if r in ok]
+    plan = CFG.get('release_plan') or {}
+    if CFG.get('release_all') or not plan:
+        n = len(order) if CFG.get('release_all') else len(pinned)
+    else:
+        days = (TODAY - datetime.date.fromisoformat(plan['start'])).days
+        n = 0 if days < 0 else plan.get('first', 50) + plan.get('per_day', 30) * days
+    return order[:max(n, len(pinned))]
+
 def main():
     shops = load_shops()
     by_region = defaultdict(list)
@@ -493,7 +530,7 @@ def main():
         pts = [(s['lat'], s['lng']) for s in ss if s['lat']]
         if pts:
             centers[r] = (round(sum(p[0] for p in pts) / len(pts), 4), round(sum(p[1] for p in pts) / len(pts), 4))
-    released = [r for r in CFG['released_regions'] if r in by_region and len(by_region[r]) >= 3 and r in centers]
+    released = release_list(by_region, centers)
     missing = [r for r in CFG['released_regions'] if r not in released]
     if os.path.exists(OUT):
         shutil.rmtree(OUT)
