@@ -227,8 +227,15 @@ def hours_text(s):
         return f"{s['open']}~{s['close']}"
     return ''
 
+def qv(t):
+    """한글은 그대로 두고 URL에 문제 되는 글자만 바꿔요 (페이지 용량 줄이기)."""
+    return re.sub(r'[%&#?+/"<>\s]', lambda m: '+' if m.group(0) == ' ' else '%%%02X' % ord(m.group(0)), str(t))
+
+def naver_nav(q):
+    return 'https://map.naver.com/p/search/' + qv(q).replace('+', '%20')
+
 def book_btn(trade, region, name=''):
-    href = url_path('요청') + '?t=' + quote(trade) + '&r=' + quote(region) + ('&s=' + quote(name) if name else '')
+    href = url_path('요청') + '?t=' + qv(trade) + '&r=' + qv(region) + ('&s=' + qv(name) if name else '')
     return f'<a class="btn book" href="{E(href)}">예약 요청<span class="dev">개발 중</span></a>'
 
 def act_row(trade, region, name, call_html, nav):
@@ -245,13 +252,13 @@ def food_card(rec, i, g, region):
     name, short, dong, lat, lng, sub = rec
     gu = gu_name(region)
     q = name + ' ' + gu.split()[-1]
-    nav = f'https://map.naver.com/p/search/{quote(name + " " + gu + " " + short)}'
-    base = url_path('요청') + '?r=' + quote(region) + '&s=' + quote(name)
+    nav = naver_nav(name + " " + gu + " " + short)
+    base = url_path('요청') + '?r=' + qv(region) + '&s=' + qv(name)
     chips = ''.join(f'<span class="chip">{E(c)}</span>' for c in (sub, dong) if c)
     return (f'<article class="shop" id="s{i}"><div class="shop-head"><span class="pin" aria-hidden="true">{i + 1}</span><h3>{E(name)}</h3></div>'
             f'<p class="addr">{E(short)}</p><div class="chips">{chips}</div>'
-            f'<div class="actions two-btn"><a class="btn book" href="{E(base + "&t=" + quote("단체 예약"))}">단체 예약 요청<span class="dev">개발 중</span></a>'
-            f'<a class="btn book" href="{E(base + "&t=" + quote("포장 예약"))}">포장 예약<span class="dev">개발 중</span></a></div>'
+            f'<div class="actions two-btn"><a class="btn book" href="{E(base + "&t=" + qv("단체 예약"))}">단체 예약 요청<span class="dev">개발 중</span></a>'
+            f'<a class="btn book" href="{E(base + "&t=" + qv("포장 예약"))}">포장 예약<span class="dev">개발 중</span></a></div>'
             f'<div class="actions two-btn">{lookup_btn(name, q, lat, lng)}<a class="btn ghost sm" href="{E(nav)}" target="_blank" rel="noopener">길찾기</a></div>'
             f'<p class="lookup-note" hidden></p></article>')
 
@@ -297,11 +304,70 @@ def food_home():
     body = f'<section class="hero"><h1>음식점 단체 예약·포장</h1><p class="lead">회식·모임 자리 잡기, 포장 주문 전에 동네 가게에 바로 전화하세요.</p></section><section class="card"><div class="hots">{tiles}</div></section>'
     return path, page('음식점 단체 예약·포장 전화 | 내시간에', '동네 고기집·한식당·횟집·중식당 단체 예약과 포장 주문 전화번호를 지역별로 찾아보세요.', path, body, [('홈', '/'), ('음식점', path)])
 
+DIRM = json.load(open(os.path.join(ROOT, 'data', 'dir_meta.json'), encoding='utf-8')) if os.path.exists(os.path.join(ROOT, 'data', 'dir_meta.json')) else {}
+DIR_PAGES = []
+
+def dir_card(rec, i, sec, gm, region):
+    name, short, dong, lat, lng, sub = rec
+    gu = gu_name(region)
+    nav = naver_nav(name + " " + gu + " " + short)
+    chips = ''.join(f'<span class="chip">{E(c)}</span>' for c in (sub, dong) if c)
+    call = lookup_btn(name, name + ' ' + gu.split()[-1], lat, lng)
+    if DIRM[sec]['kind'] == 'pro':
+        acts = (f'<div class="actions one">{book_btn("상담 예약", region, name).replace(">예약 요청<", ">상담 예약 요청<")}</div>'
+                f'<div class="actions two-btn">{call}<a class="btn ghost sm" href="{E(nav)}" target="_blank" rel="noopener">길찾기</a></div>')
+    else:
+        acts = f'<div class="actions two-btn">{call}<a class="btn ghost sm" href="{E(nav)}" target="_blank" rel="noopener">길찾기</a></div>'
+    return (f'<article class="shop" id="s{i}"><div class="shop-head"><span class="pin" aria-hidden="true">{i + 1}</span><h3>{E(name)}</h3></div>'
+            f'<p class="addr">{E(short)}</p><div class="chips">{chips}</div>{acts}<p class="lookup-note" hidden></p></article>')
+
+def dir_page(sec, g, region, entry, ctx):
+    S = DIRM[sec]; gm = S['groups'][g]; gu = gu_name(region); sr = short_region(region)
+    path = url_path(sec, g, region.replace(' ', '-'))
+    lst = entry['list'][:40]; n = entry['n']
+    cards = ''.join(dir_card(r, i, sec, gm, region) for i, r in enumerate(lst))
+    dongs = [d for d, _ in Counter(r[2] for r in entry['list'] if r[2]).most_common(10)]
+    others = ''.join(f'<a href="{E(url_path(sec, k, region.replace(" ", "-")))}">{E(gu)} {E(S["groups"][k]["name"])}</a>' for k in S['groups'] if k != g and k in ctx.get('here', ()))
+    near = ''.join(f'<a href="{E(url_path(sec, g, r.replace(" ", "-")))}">{E(short_region(r))}</a>' for r in ctx.get('near', []))
+    tips = ''.join(f'<section class="card"><h2>{E(h)}</h2><p>{E(t)}</p></section>' for h, t in S['tips'])
+    sd = ctx.get('date', '')
+    pro = S['kind'] == 'pro'
+    body = f'''<section class="hero"><h1>{E(gu)} {E(gm['name'])}<br>{'상담 전화·위치' if pro else '전화번호·위치'}</h1>
+<p class="lead">{E(region)}의 {E(gm['name'])} {n}곳이에요. 누르면 바로 전화가 걸려요.</p></section>
+<div class="warn">{E(S['intro'])}</div>
+<section class="card"><h2>{E(gu)} {E(gm['name'])} {n}곳</h2>
+{'<p class="muted">' + chr(39) + '상담 예약 요청' + chr(39) + '은 원하는 시간을 정해 사무소에 요청하는 기능으로, 지금 만들고 있어요. 이용료는 받지 않아요.</p>' if pro else ''}
+<div class="shops" data-page="20">{cards}</div><button type="button" class="btn ghost wide more" hidden>더 보기</button>
+{f'<p class="muted">그 외 {n - len(lst)}곳은 네이버 지도에서 찾아보세요.</p>' if n > len(lst) else ''}
+<p class="source">이름·주소: 소상공인시장진흥공단 상가(상권)정보{(" (" + sd[:4] + "." + sd[4:6] + ")") if sd else ""}. 목록 순서는 동네별 정리일 뿐 추천 순위가 아니에요.</p></section>
+{tips}
+{f'<section class="card"><h2>{E(gu)} 어느 동네에 많아요?</h2><p>{E(" · ".join(dongs))} 순으로 많아요.</p></section>' if dongs else ''}
+{f'<section class="card"><h2>{E(gu)} 다른 {E(S["label"])}</h2><div class="links">{others}</div></section>' if others else ''}
+{f'<section class="card"><h2>가까운 지역 {E(gm["name"])}</h2><div class="links">{near}</div></section>' if near else ''}'''
+    title = f'{sr} {gm["name"]} {n}곳 - {"상담 " if pro else ""}전화번호·위치 | 내시간에'
+    desc = f'{region} {gm["name"]} {n}곳의 위치와 전화 연결. 동네별로 정리했어요.'
+    return path, page(title, desc, path, body, [('홈', '/'), (S['label'], url_path(sec)), (gm['name'], url_path(sec, g)), (f'{gu} {gm["name"]}', path)])
+
+def dir_index(sec, g, regions):
+    S = DIRM[sec]; gm = S['groups'][g]; path = url_path(sec, g)
+    by = defaultdict(list)
+    for r in sorted(regions): by[r.split()[0]].append(r)
+    secs = ''.join(f'<section class="card" id="{E(sd)}"><h2>{E(sd)}</h2><div class="links">' + ''.join(
+        f'<a href="{E(url_path(sec, g, r.replace(" ", "-")))}">{E(gu_name(r))}</a>' for r in rs) + '</div></section>' for sd, rs in by.items())
+    body = f'<section class="hero"><h1>지역별 {E(gm["name"])}</h1><p class="lead">지역을 고르면 {E(gm["name"])} 목록과 전화 버튼이 나와요.</p></section>{secs}'
+    return path, page(f'지역별 {gm["name"]} 찾기 | 내시간에', f'시·군·구별 {gm["name"]} 위치와 전화.', path, body, [('홈', '/'), (S['label'], url_path(sec)), (gm['name'], path)])
+
+def dir_home(sec):
+    S = DIRM[sec]; path = url_path(sec)
+    tiles = ''.join(f'<a class="hot" href="{E(url_path(sec, g))}"><span class="ic" aria-hidden="true">{gm["icon"]}</span><b>{E(gm["name"])}</b></a>' for g, gm in S['groups'].items())
+    body = f'<section class="hero"><h1>{E(S["label"])}</h1><p class="lead">{E(S["intro"])}</p></section><section class="card"><div class="hots">{tiles}</div></section>'
+    return path, page(f'{S["label"]} 지역별 찾기 | 내시간에', f'동네 {S["label"]} 위치와 전화번호를 시·군·구별로 찾아보세요.', path, body, [('홈', '/'), (S['label'], path)])
+
 def store_card(rec, i, trade, region):
     name, short, dong, lat, lng = rec
     gu = gu_name(region)
     q = name + ' ' + gu.split()[-1]
-    nav = f'https://map.naver.com/p/search/{quote(name + " " + gu + " " + short)}'
+    nav = naver_nav(name + " " + gu + " " + short)
     chips = f'<div class="chips"><span class="chip">{E(dong)}</span></div>' if dong else ''
     return (f'<article class="shop" id="s{i}"><div class="shop-head"><span class="pin" aria-hidden="true">{i + 1}</span><h3>{E(name)}</h3></div>'
             f'<p class="addr">{E(short)}</p>{chips}{act_row(trade, region, name, lookup_btn(name, q, lat, lng), nav)}'
@@ -322,7 +388,7 @@ def shop_card(s, i):
         call = f'<a class="btn ghost sm call" href="tel:{E(re.sub(r"[^0-9]", "", s["phone"]))}"><span aria-hidden="true">☎</span> 전화</a>'
     else:
         call = lookup_btn(s['name'], q, s['lat'], s['lng'], car=True)
-    nav = f'https://map.naver.com/p/search/{quote(q)}'
+    nav = naver_nav(q)
     return f'''<article class="shop" id="s{i}" data-type="{E(t)}" data-dong="{E(s['dong'])}" data-phone="{1 if s['phone'] else 0}" data-lat="{s['lat'] or ''}" data-lng="{s['lng'] or ''}">
 <div class="shop-head"><span class="pin" aria-hidden="true">{i + 1}</span><h3>{name}</h3></div>
 <p class="addr">{E(s['addr'].split(' ', 2)[2] if s['addr'].count(' ') >= 2 else s['addr'])}</p>
@@ -615,6 +681,9 @@ def home(regions_count, region_centers, guides):
         ctr = region_centers.get(reg, (0, 0))
         idx.append({'t': '음식점', 'n': f'{short_region(reg)} {FOOD[g]["name"]}', 's': '단체 예약·포장 전화', 'u': fpth,
                     'k': f'{FOOD[g]["name"]} 맛집 {reg}', 'lat': ctr[0], 'lng': ctr[1]})
+    for sec, g, reg, dpth in DIR_PAGES:
+        ctr = region_centers.get(reg, (0, 0)); gm = DIRM[sec]['groups'][g]
+        idx.append({'t': DIRM[sec]['label'], 'n': f'{short_region(reg)} {gm["name"]}', 's': '전화·위치', 'u': dpth, 'k': f'{gm["name"]} {reg}', 'lat': ctr[0], 'lng': ctr[1]})
     live = {'자동차 정비': url_path('자동차정비')}
     for kind, g in guides:
         live.setdefault(GUIDES[kind]['tile'], url_path('안내', kind) if CFG.get('guides_all') else g)
@@ -646,6 +715,7 @@ def home(regions_count, region_centers, guides):
 <section class="card"><h2>열린 동네</h2><div class="links">{open_regions}</div><p class="muted">동네와 업종은 차례로 늘어나요.</p></section>
 {('<section class="card"><h2>음식점 단체 예약·포장</h2><div class="hots">' + ''.join(f'<a class="hot" href="{E(url_path("음식점", g))}"><span class="ic" aria-hidden="true">{M["icon"]}</span><b>{E(M["name"])}</b></a>' for g, M in FOOD.items()) + '</div></section>') if FOOD_PAGES else ''}
 <section class="card"><h2>집 수리·청소·상가 업종</h2>{more}</section>
+{''.join(f'<section class="card"><h2>{E(S["label"])}</h2><div class="links">' + ''.join(f'<a href="{E(url_path(sec, g))}">{gm["icon"]} {E(gm["name"])}</a>' for g, gm in S['groups'].items()) + '</div></section>' for sec, S in DIRM.items()) if DIR_PAGES else ''}
 {f'<section class="card"><h2>곧 열려요</h2>{soon}</section>' if soon else ''}
 {owner_cta('동네 업체')}
 <script type="application/json" id="regions" data-src="/search.json">[]</script>'''
@@ -811,6 +881,23 @@ def main():
     if FOOD and food['groups']:
         p, h = food_home(); write(p, h); urls.append(p)
     FOOD_PAGES[:] = food_pages
+    dp = os.path.join(ROOT, 'data', 'dir.json')
+    dird = json.load(open(dp, encoding='utf-8')) if os.path.exists(dp) and DIRM else {'sections': {}}
+    dir_pages = []
+    for sec, groups in dird['sections'].items():
+        if sec not in DIRM: continue
+        for g, regs in groups.items():
+            if g not in DIRM[sec]['groups']: continue
+            ok = [r for r in regs if len(regs[r]['list']) >= 2]
+            for reg in ok:
+                me = centers.get(reg)
+                nearr = [r for _, r in sorted((km(me, centers[r]), r) for r in ok if r != reg and r in centers)[:6]] if me else []
+                here = [k for k in groups if reg in groups[k] and len(groups[k][reg]['list']) >= 2]
+                p, h = dir_page(sec, g, reg, regs[reg], {'near': nearr, 'here': here, 'date': dird.get('_date', '')})
+                write(p, h); urls.append(p); dir_pages.append((sec, g, reg, p))
+            p, h = dir_index(sec, g, ok); write(p, h); urls.append(p)
+        p, h = dir_home(sec); write(p, h); urls.append(p)
+    DIR_PAGES[:] = dir_pages
     rc = {r: len(by_region[r]) for r in released}
     p, h = trade_index(rc); write(p, h); urls.append(p)
     p, h = home(rc, centers, guides); write(p, h); urls.insert(0, p)
