@@ -179,6 +179,7 @@ def page(title, desc, path, body, crumbs=None, jsonld=None, extra_head='', noind
 <meta name="theme-color" content="#1B64DA">
 <meta name="naver-site-verification" content="97956313d2e74474464ffa2d5116351dfbe48f90">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+{(f'<script async src="https://www.googletagmanager.com/gtag/js?id={CFG["ga_id"]}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments)}}gtag("js",new Date());gtag("config","{CFG["ga_id"]}");</script>') if CFG.get('ga_id') else ''}
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -463,7 +464,7 @@ def static_pages():
     pages[p] = page('개인정보처리방침 | 내시간에', '내시간에 개인정보처리방침', p, f'''<section class="hero"><h1>개인정보처리방침</h1><p class="lead">시행일: {TODAY.isoformat()}</p></section>
 <section class="card"><h2>1. 손님 정보</h2><p>지금 내시간에는 손님에게 회원가입이나 개인정보 입력을 받지 않아요. 예약 요청 기능이 열리면 요청 전달과 답변 문자 발송에 필요한 휴대폰 번호만 동의를 받아 받고, 30일 뒤 지워요.</p></section>
 <section class="card"><h2>2. 업체 정보</h2><p>업체 이름, 주소, 업종, 전화번호, 영업시간은 공공데이터에서 가져온 공개 정보예요. 출처: 국토교통부 전국자동차정비업체표준데이터. 수집 출처·이용 목적 안내와 처리 정지 요청은 <a href="{E(url_path('정보-수정-삭제-요청'))}">정보 수정·삭제 요청</a>으로 할 수 있어요.</p></section>
-<section class="card"><h2>3. 외부 서비스</h2><p>위치 지도는 오픈스트리트맵, 전화번호 찾기는 카카오 지도 서비스를 쓸 수 있어요. 이때 손님 브라우저가 해당 서비스에 직접 접속해요. 방문 통계를 위해 쿠키를 쓰는 분석 도구를 붙이면 이곳에 알려 드려요.</p></section>
+<section class="card"><h2>3. 외부 서비스</h2><p>위치 지도는 오픈스트리트맵, 전화번호 찾기는 카카오 지도 서비스를 쓸 수 있어요. 이때 손님 브라우저가 해당 서비스에 직접 접속해요. 방문 통계를 위해 구글 애널리틱스(Google Analytics)를 써요. 쿠키로 방문 페이지·기기·대략적인 지역 같은 통계를 모으며, 이름이나 전화번호 같은 개인정보는 보내지 않아요. 브라우저 설정에서 쿠키를 막을 수 있어요.</p></section>
 <section class="card"><h2>4. 문의</h2><p>개인정보 관련 문의: {em}</p></section>''')
     p = url_path('요청')
     pages[p] = page('원하는 시간에 예약 요청 (미리 보기) | 내시간에', '원하는 날짜·시간·예산을 정해 동네 업체에 한 번에 요청하는 화면 미리 보기예요.', p,
