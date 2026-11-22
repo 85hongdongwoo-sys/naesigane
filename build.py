@@ -1,0 +1,485 @@
+#!/usr/bin/env python3
+"""내시간에 정적 사이트 생성기.
+
+python3 build.py            -> _site/ 에 사이트를 만들어요.
+데이터: data/raw/*.csv (공공데이터포털 전국자동차정비업체표준데이터, CP949 또는 UTF-8)
+       data/raw/*.psv (샘플: 이름|종류|주소|위도|경도|등록일|면적|시작|종료|전화, 파일 이름으로 지역 지정)
+공개 지역은 config.json 의 released_regions 로 정해요.
+"""
+import csv, glob, html, json, math, os, re, shutil, sys, datetime
+from urllib.parse import quote
+from collections import Counter, defaultdict
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+OUT = os.path.join(ROOT, '_site')
+CFG = json.load(open(os.path.join(ROOT, 'config.json'), encoding='utf-8'))
+TODAY = datetime.date.today()
+BASE = CFG['base_url'].rstrip('/')
+E = html.escape
+
+TYPE_NAMES = {'1': '자동차종합정비업', '2': '소형자동차종합정비업', '3': '자동차전문정비업', '4': '원동기전문정비업'}
+TYPE_SHORT = {'1': '종합정비', '2': '소형 종합정비', '3': '전문정비', '4': '원동기 전문'}
+TYPE_DESC = {
+    '1': '모든 차종의 점검·정비와 큰 수리(판금·도장 포함)를 할 수 있어요.',
+    '2': '승용차·소형 승합·소형 화물차의 점검·정비와 큰 수리를 할 수 있어요.',
+    '3': '엔진오일·타이어·배터리·브레이크처럼 정해진 범위의 정비를 해요. 동네 카센터가 대부분 여기예요.',
+    '4': '엔진(원동기) 정비를 전문으로 해요.',
+}
+SAMPLE_REGIONS = {'yeonsu': '인천광역시 연수구', 'jemulpo': '인천광역시 제물포구'}
+SIDO_SHORT = {'서울특별시': '서울', '부산광역시': '부산', '대구광역시': '대구', '인천광역시': '인천', '광주광역시': '광주', '대전광역시': '대전',
+              '울산광역시': '울산', '세종특별자치시': '세종', '경기도': '경기', '강원특별자치도': '강원', '충청북도': '충북', '충청남도': '충남',
+              '전북특별자치도': '전북', '전라남도': '전남', '경상북도': '경북', '경상남도': '경남', '제주특별자치도': '제주'}
+
+# ---------------------------------------------------------------- data
+
+def region_of(addr):
+    a = addr.split()
+    if len(a) < 2:
+        return None
+    sido, sgg = a[0], a[1]
+    if re.search(r'[시군]$', sgg) and len(a) > 2 and re.search(r'구$', a[2]):
+        sgg = sgg + ' ' + a[2]
+    if not re.search(r'[시군구]$', sgg):
+        return None
+    return sido + ' ' + sgg
+
+def dong_of(addr):
+    m = re.search(r'\(([가-힣0-9]{1,8}(?:동|읍|면|가))(?:[,)])', addr)
+    return m.group(1).strip() if m and len(m.group(1)) >= 2 else ''
+
+def norm_code(v):
+    v = str(v or '').strip()
+    return v.lstrip('0') or v
+
+def load_shops():
+    shops = []
+    for path in glob.glob(os.path.join(ROOT, 'data', 'raw', '*.csv')):
+        raw = open(path, 'rb').read()
+        for enc in ('utf-8-sig', 'cp949'):
+            try:
+                text = raw.decode(enc)
+                break
+            except UnicodeDecodeError:
+                continue
+        for r in csv.DictReader(text.splitlines()):
+            addr = (r.get('소재지도로명주소') or r.get('소재지지번주소') or '').strip()
+            shops.append(dict(name=r.get('자동차정비업체명', '').strip(), type=norm_code(r.get('자동차정비업체종류')), addr=addr,
+                              lat=r.get('위도'), lng=r.get('경도'), reg=r.get('사업등록일자', ''), area=r.get('면적', ''),
+                              status=norm_code(r.get('영업상태')), open=r.get('운영시작시각', ''), close=r.get('운영종료시각', ''),
+                              phone=(r.get('전화번호') or '').strip(), src_date=r.get('데이터기준일자', '')))
+    if not shops:
+        for path in glob.glob(os.path.join(ROOT, 'data', 'raw', '*.psv')):
+            key = os.path.splitext(os.path.basename(path))[0]
+            prefix = SAMPLE_REGIONS.get(key)
+            for line in open(path, encoding='utf-8'):
+                f = line.rstrip('\n').split('|')
+                if len(f) < 10:
+                    continue
+                shops.append(dict(name=f[0], type=f[1], addr=prefix + ' ' + f[2], lat=f[3], lng=f[4], reg=f[5], area=f[6],
+                                  status='1', open=f[7], close=f[8], phone=f[9], src_date=CFG['data_date']))
+    out = []
+    for s in shops:
+        if s['status'] != '1' or not s['name'] or not s['addr']:
+            continue
+        try:
+            s['lat'], s['lng'] = float(s['lat']), float(s['lng'])
+        except (TypeError, ValueError):
+            s['lat'] = s['lng'] = None
+        s['region'] = region_of(s['addr'])
+        if not s['region']:
+            continue
+        s['dong'] = dong_of(s['addr'])
+        m = re.match(r'(\d{4})', s['reg'] or '')
+        s['year'] = int(m.group(1)) if m else None
+        s['phone'] = s['phone'] if re.search(r'\d{3,}', s['phone'] or '') else ''
+        out.append(s)
+    return out
+
+# ---------------------------------------------------------------- helpers
+
+def slug_region(region):
+    sido, rest = region.split(' ', 1)
+    return sido + '/' + rest.replace(' ', '-')
+
+def url_path(*parts):
+    return '/' + '/'.join(p.strip('/') for p in parts if p) + '/'
+
+def abs_url(path):
+    return BASE + quote(path)
+
+def short_region(region):
+    sido, rest = region.split(' ', 1)
+    return SIDO_SHORT.get(sido, sido) + ' ' + rest
+
+def gu_name(region):
+    return region.split(' ', 1)[1]
+
+def josa(word, a, b):
+    ch = word[-1]
+    if '가' <= ch <= '힣':
+        return a if (ord(ch) - 0xAC00) % 28 else b
+    return a
+
+def km(a, b):
+    return math.hypot((a[0] - b[0]) * 111, (a[1] - b[1]) * 88)
+
+# ---------------------------------------------------------------- layout
+
+def page(title, desc, path, body, crumbs=None, jsonld=None, extra_head='', noindex=False, scripts=''):
+    canonical = abs_url(path)
+    ld = ''
+    items = list(jsonld or [])
+    if crumbs:
+        items.append({'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
+            {'@type': 'ListItem', 'position': i + 1, 'name': n, 'item': abs_url(p)} for i, (n, p) in enumerate(crumbs)]})
+    for it in items:
+        ld += '<script type="application/ld+json">' + json.dumps(it, ensure_ascii=False) + '</script>\n'
+    crumb_html = ''
+    if crumbs:
+        crumb_html = '<nav class="crumbs" aria-label="현재 위치">' + ' › '.join(
+            ('<a href="%s">%s</a>' % (E(p), E(n)) if i < len(crumbs) - 1 else '<span>%s</span>' % E(n)) for i, (n, p) in enumerate(crumbs)) + '</nav>'
+    return f'''<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{E(title)}</title>
+<meta name="description" content="{E(desc)}">
+<link rel="canonical" href="{E(canonical)}">
+{'<meta name="robots" content="noindex, follow">' if noindex else ''}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="내시간에">
+<meta property="og:title" content="{E(title)}">
+<meta property="og:description" content="{E(desc)}">
+<meta property="og:url" content="{E(canonical)}">
+<meta name="theme-color" content="#1B64DA">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="/s.css">
+{extra_head}{ld}</head>
+<body>
+<header class="top"><a class="brand" href="/"><span class="logo" aria-hidden="true">내</span><b>내시간에</b></a><a class="top-owner" href="{E(url_path('사장님'))}">사장님이세요?</a></header>
+<main>
+{crumb_html}
+{body}
+</main>
+<footer class="foot">
+<p><b>내시간에</b> · 원하는 시간을 먼저 정하면, 동네 업체가 맞춰 답해 드려요.</p>
+<p><a href="{E(url_path('소개'))}">소개</a> · <a href="{E(url_path('정보-수정-삭제-요청'))}">정보 수정·삭제 요청</a> · <a href="{E(url_path('개인정보처리방침'))}">개인정보처리방침</a></p>
+<p class="muted">업체 정보는 공공데이터를 바탕으로 하며 실제와 다를 수 있어요.</p>
+</footer>
+<script>window.NSG={{kakao:{json.dumps(CFG.get('kakao_js_key') or '')}}};</script>
+<script src="/app.js" defer></script>
+{scripts}
+</body>
+</html>
+'''
+
+def faq_html(faqs):
+    return '<section class="card"><h2>자주 묻는 질문</h2>' + ''.join(
+        f'<details class="faq"><summary>{E(q)}</summary><p>{E(a)}</p></details>' for q, a in faqs) + '</section>'
+
+def faq_ld(faqs):
+    return {'@context': 'https://schema.org', '@type': 'FAQPage', 'mainEntity': [
+        {'@type': 'Question', 'name': q, 'acceptedAnswer': {'@type': 'Answer', 'text': a}} for q, a in faqs]}
+
+def owner_cta(what):
+    return f'''<section class="card cta-owner">
+<h2>{E(what)} 사장님이세요?</h2>
+<p>무료로 등록하면 전화번호·영업시간을 직접 고칠 수 있고, 손님이 원하는 시간에 맞춘 예약 요청을 문자로 받을 수 있어요.</p>
+<a class="btn dark" href="{E(url_path('사장님'))}">무료로 등록 신청하기</a>
+</section>'''
+
+# ---------------------------------------------------------------- region page
+
+def hours_text(s):
+    if s['open'] and s['close']:
+        return f"{s['open']}~{s['close']}"
+    return ''
+
+def shop_card(s, i):
+    name = E(s['name'])
+    t = s['type']
+    since = f"{s['year']}년 등록 · {TODAY.year - s['year'] + 1}년째" if s['year'] else ''
+    hrs = hours_text(s)
+    chips = [f'<span class="chip">{E(TYPE_SHORT.get(t, "정비"))}</span>']
+    if hrs:
+        chips.append(f'<span class="chip" data-hours="{E(s["open"])}-{E(s["close"])}">평일 {E(hrs)}</span>')
+    if since:
+        chips.append(f'<span class="chip">{E(since)}</span>')
+    q = s['name'] + ' ' + gu_name(s['region']).split()[-1]
+    if s['phone']:
+        call = f'<a class="btn dark call" href="tel:{E(re.sub(r"[^0-9]", "", s["phone"]))}"><span aria-hidden="true">☎</span> {E(s["phone"])}</a>'
+    else:
+        call = (f'<button type="button" class="btn dark call lookup" data-name="{name}" data-q="{E(q)}" '
+                f'data-lat="{s["lat"] or ""}" data-lng="{s["lng"] or ""}"><span aria-hidden="true">☎</span> 전화번호 보기</button>')
+    nav = f'https://map.naver.com/p/search/{quote(q)}'
+    return f'''<article class="shop" id="s{i}" data-type="{E(t)}" data-dong="{E(s['dong'])}" data-phone="{1 if s['phone'] else 0}" data-lat="{s['lat'] or ''}" data-lng="{s['lng'] or ''}">
+<div class="shop-head"><span class="pin" aria-hidden="true">{i + 1}</span><h3>{name}</h3></div>
+<p class="addr">{E(s['addr'].split(' ', 2)[2] if s['addr'].count(' ') >= 2 else s['addr'])}</p>
+<div class="chips">{''.join(chips)}</div>
+<div class="actions">{call}<a class="btn ghost" href="{E(nav)}" target="_blank" rel="noopener">길찾기</a></div>
+<p class="lookup-note" hidden></p>
+</article>'''
+
+def region_page(region, shops, all_regions, region_centers):
+    gu = gu_name(region)
+    sr = short_region(region)
+    n = len(shops)
+    tc = Counter(s['type'] for s in shops)
+    ph = sum(1 for s in shops if s['phone'])
+    hrs = sum(1 for s in shops if s['open'])
+    years = [s['year'] for s in shops if s['year']]
+    old20 = sum(1 for y in years if TODAY.year - y >= 20)
+    avg_age = round(sum(TODAY.year - y + 1 for y in years) / len(years)) if years else None
+    newest = max(years) if years else None
+    dongs = Counter(s['dong'] for s in shops if s['dong'])
+    top_dongs = dongs.most_common(4)
+    sat_note = ''
+    shops = sorted(shops, key=lambda s: (s['phone'] == '', -(s['year'] or 0) * 0, s['type'], s['name']))
+    path = url_path('자동차정비', slug_region(region))
+    title = f'{sr} 자동차 정비소 {n}곳 - 전화번호·위치·정비 종류 | 내시간에'
+    dong_txt = ', '.join(d for d, _ in top_dongs)
+    desc = f'{region} 자동차 정비소 {n}곳의 전화번호, 위치, 정비 종류(종합·전문)를 한눈에. ' + (f'{dong_txt} 등 동네별로 찾고 바로 전화하세요.' if dong_txt else '바로 전화하세요.')
+
+    stat = f'''<div class="stats">
+<div><b>{n}곳</b><span>영업 중인 정비소</span></div>
+<div><b>{tc.get('1', 0) + tc.get('2', 0)}곳</b><span>종합정비(큰 수리)</span></div>
+<div><b>{tc.get('3', 0) + tc.get('4', 0)}곳</b><span>전문정비(카센터)</span></div>
+</div>'''
+    facts = []
+    if top_dongs:
+        facts.append(f"가장 많은 동네는 <b>{E(top_dongs[0][0])}</b>({top_dongs[0][1]}곳)이고, " + ', '.join(f'{E(d)} {c}곳' for d, c in top_dongs[1:]) + ' 순이에요.' if len(top_dongs) > 1 else f"정비소가 모인 동네는 <b>{E(top_dongs[0][0])}</b>예요.")
+    if avg_age:
+        facts.append(f'등록한 지 평균 <b>{avg_age}년</b> 된 곳들이고, 20년 넘게 자리를 지킨 곳이 <b>{old20}곳</b>이에요.' + (f' 가장 최근에 문을 연 곳은 {newest}년 등록이에요.' if newest else ''))
+    facts.append(f'전화번호가 공개된 곳은 {ph}곳이에요. 번호가 없는 곳은 <b>전화번호 보기</b>를 누르면 찾아 드려요.' if ph < n else f'{n}곳 모두 전화번호가 공개돼 있어요. 누르면 바로 전화가 걸려요.')
+    if hrs:
+        facts.append(f'영업시간이 공개된 곳은 {hrs}곳이에요. 토·일 영업은 업체마다 달라서 전화로 확인해 주세요.')
+
+    filters = ['<button type="button" class="f on" data-f="all" aria-pressed="true">전체</button>']
+    if tc.get('1', 0) + tc.get('2', 0):
+        filters.append('<button type="button" class="f" data-f="big" aria-pressed="false">큰 수리(종합)</button>')
+    filters.append('<button type="button" class="f" data-f="small" aria-pressed="false">카센터(전문)</button>')
+    if hrs:
+        filters.append('<button type="button" class="f" data-f="open" aria-pressed="false">지금 영업 중</button>')
+    for d, _ in top_dongs:
+        filters.append(f'<button type="button" class="f" data-f="dong:{E(d)}" aria-pressed="false">{E(d)}</button>')
+
+    cards = '\n'.join(shop_card(s, i) for i, s in enumerate(shops))
+    pts = [[s['lat'], s['lng'], i + 1] for i, s in enumerate(shops) if s['lat']]
+    # nearby regions
+    me = region_centers.get(region)
+    near = []
+    if me:
+        near = sorted((km(me, c), r) for r, c in region_centers.items() if r != region and r in all_regions)[:6]
+    near_html = ''
+    if near:
+        near_html = '<section class="card"><h2>가까운 동네 정비소</h2><div class="links">' + ''.join(
+            f'<a href="{E(url_path("자동차정비", slug_region(r)))}">{E(short_region(r))} 정비소</a>' for _, r in near) + '</div></section>'
+
+    types_html = '<section class="card"><h2>정비소 종류, 이렇게 달라요</h2><dl class="types">' + ''.join(
+        f'<dt>{E(TYPE_NAMES[k])} <span class="muted">{gu} {tc.get(k, 0)}곳</span></dt><dd>{E(TYPE_DESC[k])}</dd>' for k in ('1', '2', '3', '4') if tc.get(k)) + '</dl></section>'
+
+    faqs = [
+        (f'{gu}에 자동차 정비소는 몇 곳 있나요?', f'{region}에 등록된 자동차 정비업체 중 영업 중인 곳은 {n}곳이에요. 종합정비(큰 수리 가능) {tc.get("1", 0) + tc.get("2", 0)}곳, 전문정비(카센터) {tc.get("3", 0) + tc.get("4", 0)}곳이에요.'),
+        ('사고 수리나 판금·도장은 어디서 하나요?', '판금·도장 같은 큰 수리는 자동차종합정비업이나 소형자동차종합정비업으로 등록된 곳에서 할 수 있어요. 위 목록에서 "큰 수리(종합)"를 누르면 그런 곳만 보여요.'),
+        ('엔진오일·타이어 교체는 어디가 편한가요?', '엔진오일, 타이어, 배터리 교체는 동네 카센터(자동차전문정비업)에서 대부분 할 수 있어요. 기다리는 시간을 줄이려면 전화로 미리 시간을 맞추세요.'),
+        ('여기 정보는 어디서 가져왔나요?', f'국토교통부 전국자동차정비업체표준데이터(지자체 등록 정보, {CFG["data_date"]} 기준)를 바탕으로 해요. 실제와 다르면 정보 수정·삭제 요청으로 알려 주세요.'),
+    ]
+    ld = [{'@context': 'https://schema.org', '@type': 'ItemList', 'name': f'{region} 자동차 정비소', 'numberOfItems': n,
+           'itemListElement': [{'@type': 'ListItem', 'position': i + 1, 'item': {
+               '@type': 'AutoRepair', 'name': s['name'],
+               'address': {'@type': 'PostalAddress', 'streetAddress': s['addr'], 'addressRegion': region.split()[0], 'addressLocality': gu, 'addressCountry': 'KR'},
+               **({'telephone': s['phone']} if s['phone'] else {}),
+               **({'geo': {'@type': 'GeoCoordinates', 'latitude': s['lat'], 'longitude': s['lng']}} if s['lat'] else {}),
+               **({'openingHours': f"Mo-Fr {s['open']}-{s['close']}"} if s['open'] and s['close'] else {})}}
+               for i, s in enumerate(shops)]}, faq_ld(faqs)]
+    body = f'''<section class="hero">
+<h1>{E(gu)} 자동차 정비소</h1>
+<p class="lead">{E(region)}에서 영업 중인 정비소 {n}곳의 전화번호·위치·정비 종류를 모았어요. 누르면 바로 전화가 걸려요.</p>
+</section>
+{stat}
+<section class="card facts"><h2>{E(gu)} 정비소 한눈에</h2><ul>{''.join(f'<li>{f}</li>' for f in facts)}</ul></section>
+<section class="list-wrap">
+<h2 class="list-title">{E(gu)} 정비소 목록</h2>
+<div class="filters" role="group" aria-label="정비소 거르기">{''.join(filters)}</div>
+<div id="map" class="map" role="img" aria-label="{E(gu)} 정비소 위치 지도" data-pts='{json.dumps(pts)}'><button type="button" class="btn ghost map-load">지도에서 위치 보기</button></div>
+<p class="count" aria-live="polite"><span id="shown">{n}</span>곳</p>
+<div class="shops" data-page="20">
+{cards}
+</div>
+<button type="button" class="btn ghost wide more" hidden>더 보기</button>
+</section>
+<section class="card soon"><h2>원하는 시간에 맞춰 예약하는 기능, 준비 중이에요</h2><p>시간을 정해 요청하면 {E(gu)} 정비소 사장님이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. 사장님 가입이 시작되면 이 동네부터 열려요.</p></section>
+{types_html}
+{faq_html(faqs)}
+{near_html}
+{owner_cta(gu + ' 정비소')}
+<p class="source">업체 이름·주소·정비 종류·전화번호·영업시간: 국토교통부 전국자동차정비업체표준데이터({E(region)}, {E(CFG['data_date'])} 기준). 실제와 다를 수 있어요. 번호가 없는 곳의 '전화번호 보기'는 누를 때 지도 서비스에서 찾아 보여 드리며 저장하지 않아요. <a href="{E(url_path('정보-수정-삭제-요청'))}">정보 수정·삭제 요청</a></p>'''
+    crumbs = [('홈', '/'), ('자동차 정비', url_path('자동차정비')), (short_region(region).split()[0], url_path('자동차정비')), (gu, path)]
+    crumbs = [crumbs[0], crumbs[1], (gu, path)]
+    head = '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>'
+    return path, page(title, desc, path, body, crumbs, ld, extra_head=head)
+
+# ---------------------------------------------------------------- guide page (하수구)
+
+def guide_hasugu(region):
+    gu = gu_name(region)
+    path = url_path('안내', '하수구-막힘', region.replace(' ', '-'))
+    title = f'{short_region(region)} 하수구 막힘 - 업체 부르기 전 해 볼 것 3가지 | 내시간에'
+    desc = f'{region}에서 변기·싱크대·욕실 바닥이 막혔을 때 직접 해 볼 것 3가지, 업체를 불러야 하는 때, 관리사무소에 먼저 연락할 때를 정리했어요.'
+    steps = [
+        ('뜨거운 물 + 주방세제 붓기', '세제를 반 컵쯤 넣고 뜨거운 물(끓는 물은 배관이 상할 수 있어 안 돼요)을 천천히 부은 뒤 10분 기다려요. 기름 때문에 막힌 싱크대에 잘 들어요.'),
+        ('압축기(뚫어뻥)로 밀고 당기기', '구멍을 완전히 덮고 물이 조금 찬 상태에서 10번쯤 세게 당겨요. 변기 막힘은 이걸로 풀리는 경우가 많아요.'),
+        ('배수구 거름망과 머리카락 빼기', '욕실 바닥이면 거름망을 열고 머리카락 뭉치를 꺼내요. 욕실 막힘의 가장 흔한 원인이에요.'),
+    ]
+    faqs = [
+        ('세 가지를 다 해 봤는데도 안 내려가요.', '배관 안쪽 깊은 곳이 막힌 경우예요. 무리하게 약품을 많이 부으면 배관이 상할 수 있으니, 이때는 업체를 부르는 게 좋아요.'),
+        ('여러 집이 같이 막힌 것 같아요.', '아파트에서 아래층까지 역류하거나 여러 집이 함께 막히면 공용 배관 문제일 수 있어요. 관리사무소에 먼저 알려 주세요.'),
+        ('밤이나 주말에도 업체가 오나요?', '업체마다 달라요. 야간·주말에는 출장비가 더 붙는 경우가 많으니 전화할 때 출장비를 꼭 먼저 물어보세요.'),
+        ('업체를 부르면 무엇을 물어봐야 하나요?', '출장비가 따로 있는지, 뚫지 못하면 비용을 받는지, 내시경·고압 세척이 필요하면 얼마인지 미리 물어보면 나중에 다툼이 줄어요.'),
+    ]
+    body = f'''<section class="hero"><h1>{E(gu)} 하수구 막힘,<br>업체 부르기 전 해 볼 것 3가지</h1>
+<p class="lead">{E(region)}에서 변기나 싱크대, 욕실 바닥이 막혔을 때 먼저 볼 것들을 정리했어요. 해 보고도 안 내려가면 그때 업체를 부르세요.</p></section>
+<div class="warn"><b>물이 넘치고 있다면</b> 먼저 변기 뒤 밸브나 세탁기 수도를 잠그세요. 아랫집으로 새면 관리사무소에도 바로 알려 주세요.</div>
+<section class="card"><h2>업체 부르기 전에 해 볼 것</h2><ol class="steps">{''.join(f'<li><b>{E(t)}</b><span>{E(d)}</span></li>' for t, d in steps)}</ol></section>
+<section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">
+<li>세 가지를 다 해도 물이 안 내려갈 때</li><li>막혔다 풀렸다를 자주 반복할 때 (배관 안쪽에 때가 쌓인 경우가 많아요)</li><li>하수구에서 냄새가 계속 올라올 때</li><li>바닥 배수구에서 물이 거꾸로 올라올 때</li></ul></section>
+<section class="card"><h2>관리사무소 먼저? 업체 먼저?</h2><p>아파트에서 <b>여러 집이 같이 쓰는 공용 배관</b>이 막혔으면 관리사무소가 처리해요. <b>우리 집 안쪽 배관</b>만 막혔으면 출장 업체를 부르면 돼요. 아래층으로 물이 새거나 여러 집이 함께 막혔다면 관리사무소에 먼저 연락하세요.</p></section>
+{faq_html(faqs)}
+{owner_cta(gu + ' 하수구')}
+<p class="source">이 안내는 일반적인 정보예요. 배관 상태에 따라 방법과 비용이 달라질 수 있어요.</p>'''
+    crumbs = [('홈', '/'), ('하수구 막힘', path), (gu, path)]
+    crumbs = [('홈', '/'), (f'{gu} 하수구 막힘', path)]
+    return path, page(title, desc, path, body, crumbs, [faq_ld(faqs)])
+
+# ---------------------------------------------------------------- simple pages
+
+def mail_link(subject):
+    em = CFG.get('contact_email') or 'contact@example.com'
+    return f'mailto:{em}?subject={quote(subject)}'
+
+def static_pages():
+    em = E(CFG.get('contact_email') or '[이메일 주소 설정 필요]')
+    pages = {}
+    p = url_path('사장님')
+    pages[p] = page('사장님 무료 등록 신청 | 내시간에', '내시간에에 업체를 무료로 등록하고 손님 예약 요청을 문자로 받아 보세요.', p, f'''<section class="hero"><h1>사장님, 손님이 원하는 시간에<br>맞춰 답해 보세요</h1>
+<p class="lead">손님이 먼저 시간을 정해 요청하면, 사장님은 문자 버튼 세 개로 "가능 / 다른 시간 / 어려움"만 누르면 돼요.</p></section>
+<section class="card"><h2>등록하면 이렇게 바뀌어요</h2><ul class="plain"><li>전화번호·영업시간·가격대를 직접 고칠 수 있어요.</li><li>업체 목록에 '예약 답변 업체'로 표시되고, 손님 예약 요청을 문자로 받아요.</li><li>사업자등록 확인을 거친 업체만 등록돼요.</li></ul></section>
+<section class="card"><h2>지금은 등록 신청을 받고 있어요</h2><p>아래 버튼으로 업체 이름, 사업자등록번호, 연락받을 휴대폰 번호를 보내 주시면 확인 후 연락드려요. 신청은 무료예요.</p>
+<a class="btn dark" href="{E(mail_link('내시간에 사장님 등록 신청'))}">이메일로 등록 신청하기</a><p class="muted">받는 곳: {em}</p></section>''')
+    p = url_path('정보-수정-삭제-요청')
+    pages[p] = page('업체 정보 수정·삭제 요청 | 내시간에', '내시간에에 실린 업체 정보의 수정이나 삭제를 요청하는 방법이에요.', p, f'''<section class="hero"><h1>업체 정보 수정·삭제 요청</h1>
+<p class="lead">내시간에의 업체 정보는 공공데이터(국토교통부 표준데이터 등)를 바탕으로 해요. 정보가 틀렸거나, 사장님이 정보 게시를 원하지 않으시면 알려 주세요.</p></section>
+<section class="card"><h2>요청 방법</h2><ol class="steps"><li><b>업체 이름과 주소</b><span>어느 업체인지 알 수 있게 적어 주세요.</span></li><li><b>원하시는 것</b><span>수정(무엇을 어떻게) 또는 삭제를 적어 주세요.</span></li><li><b>보내기</b><span>요청을 받으면 확인 후 바로 처리하고 결과를 알려 드려요.</span></li></ol>
+<a class="btn dark" href="{E(mail_link('내시간에 업체 정보 수정·삭제 요청'))}">이메일로 요청하기</a><p class="muted">받는 곳: {em}</p></section>
+<section class="card"><h2>정보를 어디서 가져왔나요?</h2><p>공개된 공공데이터에서 업체 이름, 주소, 업종, 전화번호, 영업시간을 가져와요. 전화번호가 없는 업체는 손님이 '전화번호 보기'를 누를 때만 지도 서비스에서 찾아 화면에 보여 주며, 그 번호를 저장하지 않아요. 개인정보 보호법 제20조에 따라 요청하시면 수집 출처와 이용 목적을 알려 드리고, 처리 정지를 요청하실 수 있어요.</p></section>''')
+    p = url_path('개인정보처리방침')
+    pages[p] = page('개인정보처리방침 | 내시간에', '내시간에 개인정보처리방침', p, f'''<section class="hero"><h1>개인정보처리방침</h1><p class="lead">시행일: {TODAY.isoformat()}</p></section>
+<section class="card"><h2>1. 손님 정보</h2><p>지금 내시간에는 손님에게 회원가입이나 개인정보 입력을 받지 않아요. 예약 요청 기능이 열리면 요청 전달과 답변 문자 발송에 필요한 휴대폰 번호만 동의를 받아 받고, 30일 뒤 지워요.</p></section>
+<section class="card"><h2>2. 업체 정보</h2><p>업체 이름, 주소, 업종, 전화번호, 영업시간은 공공데이터에서 가져온 공개 정보예요. 출처: 국토교통부 전국자동차정비업체표준데이터. 수집 출처·이용 목적 안내와 처리 정지 요청은 <a href="{E(url_path('정보-수정-삭제-요청'))}">정보 수정·삭제 요청</a>으로 할 수 있어요.</p></section>
+<section class="card"><h2>3. 외부 서비스</h2><p>위치 지도는 오픈스트리트맵, 전화번호 찾기는 카카오 지도 서비스를 쓸 수 있어요. 이때 손님 브라우저가 해당 서비스에 직접 접속해요. 방문 통계를 위해 쿠키를 쓰는 분석 도구를 붙이면 이곳에 알려 드려요.</p></section>
+<section class="card"><h2>4. 문의</h2><p>개인정보 관련 문의: {em}</p></section>''')
+    p = url_path('소개')
+    pages[p] = page('내시간에 소개 | 원하는 시간에 맞춰 답하는 동네 업체', '손님이 원하는 시간을 먼저 정하면 동네 업체가 맞춰 답하는 서비스, 내시간에를 소개해요.', p, f'''<section class="hero"><h1>돈 내는 손님이<br>시간을 먼저 정해요</h1><p class="lead">내시간에는 동네 업체를 찾고, 원하는 시간에 맞춰 예약할 수 있게 돕는 서비스예요.</p></section>
+<section class="card"><h2>지금 할 수 있는 것</h2><ul class="plain"><li>지역별 자동차 정비소 목록, 전화번호, 위치, 정비 종류 보기</li><li>번호를 눌러 바로 전화하기</li><li>막힘·누수처럼 급한 일에 먼저 해 볼 것 안내</li></ul></section>
+<section class="card"><h2>곧 열리는 것</h2><ul class="plain"><li>원하는 시간과 예산을 정해 여러 업체에 한 번에 요청하기</li><li>사장님이 가능한 시간과 가격대로 답하고, 손님이 비교해서 고르기</li><li>예약 확인된 손님만 쓰는 업체 후기</li></ul></section>''')
+    return pages
+
+# ---------------------------------------------------------------- index pages
+
+def trade_index(regions_count):
+    path = url_path('자동차정비')
+    by_sido = defaultdict(list)
+    for r, c in sorted(regions_count.items()):
+        by_sido[r.split()[0]].append((r, c))
+    secs = ''.join(f'<section class="card"><h2>{E(sido)}</h2><div class="links">' + ''.join(
+        f'<a href="{E(url_path("자동차정비", slug_region(r)))}">{E(gu_name(r))} <span class="muted">{c}곳</span></a>' for r, c in rs) + '</div></section>'
+        for sido, rs in by_sido.items())
+    body = f'''<section class="hero"><h1>지역별 자동차 정비소</h1><p class="lead">동네를 고르면 정비소 전화번호·위치·정비 종류를 볼 수 있어요.</p></section>{secs}'''
+    return path, page('지역별 자동차 정비소 찾기 | 내시간에', '시·군·구별 자동차 정비소 전화번호와 위치, 정비 종류를 찾아보세요.', path, body, [('홈', '/'), ('자동차 정비', path)])
+
+def home(regions_count, region_centers, guides):
+    idx = [{'n': short_region(r), 'g': gu_name(r), 'u': url_path('자동차정비', slug_region(r)), 'c': c,
+            'lat': region_centers[r][0], 'lng': region_centers[r][1]} for r, c in regions_count.items()]
+    groups = [
+        ('집 수리·고장', ['하수구 막힘', '누수 탐지', '열쇠·도어락', '보일러 고장', '정전·전기 고장', '수도 동파', '유리·창문 파손', '에어컨 고장·청소', '수전·싱크대 교체', '옥상·외벽 방수', '정화조 청소']),
+        ('청소·정리·방역', ['입주·이사청소', '줄눈·탄성코트', '유품정리·특수청소', '방역·해충', '비둘기·벌집']),
+        ('상가·업소', ['자동차 정비', '사다리차', '셔터·자동문 수리', '업소용 냉장고', '간판 수리', '팝업 인테리어']),
+    ]
+    live = {'자동차 정비': url_path('자동차정비')}
+    for g in guides:
+        live.setdefault('하수구 막힘', g)
+    gh = ''
+    for name, items in groups:
+        tiles = ''.join((f'<a class="tile on" href="{E(live[i])}">{E(i)}</a>' if i in live else f'<span class="tile">{E(i)}<small>준비 중</small></span>') for i in items)
+        gh += f'<section class="card"><h2>{E(name)}</h2><div class="tiles">{tiles}</div></section>'
+    body = f'''<section class="hero home"><h1>원하는 시간에,<br>동네 업체를 찾아요</h1><p class="lead">정비소·출장 수리·청소 업체를 동네별로 모았어요. 바로 전화하거나, 곧 원하는 시간에 맞춰 예약 요청도 할 수 있어요.</p></section>
+<section class="card find"><h2>우리 동네 정비소 찾기</h2>
+<label class="search"><span class="sr">지역 검색</span><input id="q" type="search" placeholder="예: 연수구, 제물포구" autocomplete="off"></label>
+<button type="button" id="near" class="btn ghost wide">내 위치에서 가까운 곳</button>
+<div id="results" class="links" aria-live="polite"></div></section>
+{gh}
+{owner_cta('동네 업체')}
+<script type="application/json" id="regions">{json.dumps(idx, ensure_ascii=False)}</script>'''
+    ld = [{'@context': 'https://schema.org', '@type': 'WebSite', 'name': '내시간에', 'url': BASE + '/'}]
+    return '/', page('내시간에 - 동네 정비소·출장 업체 찾기, 원하는 시간에 예약', '동네 자동차 정비소와 출장 수리 업체의 전화번호·위치를 찾고, 원하는 시간에 맞춰 예약하세요.', '/', body, None, ld)
+
+# ---------------------------------------------------------------- write
+
+def write(path, content):
+    fp = os.path.join(OUT, path.strip('/'), 'index.html') if path != '/' else os.path.join(OUT, 'index.html')
+    os.makedirs(os.path.dirname(fp), exist_ok=True)
+    open(fp, 'w', encoding='utf-8').write(content)
+
+def main():
+    shops = load_shops()
+    by_region = defaultdict(list)
+    for s in shops:
+        by_region[s['region']].append(s)
+    centers = {}
+    for r, ss in by_region.items():
+        pts = [(s['lat'], s['lng']) for s in ss if s['lat']]
+        if pts:
+            centers[r] = (round(sum(p[0] for p in pts) / len(pts), 4), round(sum(p[1] for p in pts) / len(pts), 4))
+    released = [r for r in CFG['released_regions'] if r in by_region and len(by_region[r]) >= 3 and r in centers]
+    missing = [r for r in CFG['released_regions'] if r not in released]
+    if os.path.exists(OUT):
+        shutil.rmtree(OUT)
+    shutil.copytree(os.path.join(ROOT, 'static'), OUT)
+    urls = []
+    for r in released:
+        p, h = region_page(r, by_region[r], set(released), centers)
+        write(p, h); urls.append(p)
+    guides = []
+    for g in CFG.get('released_guides', []):
+        kind, reg = g.split('/')
+        reg = reg.replace('-', ' ', 1)
+        if kind == '하수구-막힘':
+            p, h = guide_hasugu(reg)
+            write(p, h); urls.append(p); guides.append(p)
+    rc = {r: len(by_region[r]) for r in released}
+    p, h = trade_index(rc); write(p, h); urls.append(p)
+    p, h = home(rc, centers, guides); write(p, h); urls.insert(0, p)
+    for p, h in static_pages().items():
+        write(p, h); urls.append(p)
+    write('/404', page('페이지를 찾을 수 없어요 | 내시간에', '페이지를 찾을 수 없어요.', '/404/', '<section class="hero"><h1>페이지를 찾을 수 없어요</h1><p class="lead"><a href="/">첫 화면으로 가기</a></p></section>', noindex=True))
+    shutil.move(os.path.join(OUT, '404', 'index.html'), os.path.join(OUT, '404.html')); os.rmdir(os.path.join(OUT, '404'))
+    sm = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + ''.join(
+        f'<url><loc>{E(abs_url(u))}</loc><lastmod>{TODAY.isoformat()}</lastmod></url>\n' for u in urls) + '</urlset>\n'
+    open(os.path.join(OUT, 'sitemap.xml'), 'w', encoding='utf-8').write(sm)
+    open(os.path.join(OUT, 'robots.txt'), 'w').write(f'User-agent: *\nAllow: /\nSitemap: {BASE}/sitemap.xml\n')
+    host = re.sub(r'^https?://', '', BASE)
+    if not host.endswith('github.io'):
+        open(os.path.join(OUT, 'CNAME'), 'w').write(host + '\n')
+    open(os.path.join(OUT, '.nojekyll'), 'w').write('')
+    print(f'업체 {len(shops)}곳 / 지역 {len(by_region)}곳 / 공개 지역 {len(released)}곳 / 페이지 {len(urls)}쪽')
+    if missing:
+        print('공개 목록에 있지만 데이터가 없어 건너뛴 지역:', ', '.join(missing))
+    if not CFG.get('contact_email'):
+        print('주의: config.json 의 contact_email 이 비어 있어요. 공개 전에 꼭 넣어 주세요.')
+
+if __name__ == '__main__':
+    main()
