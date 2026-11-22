@@ -440,7 +440,7 @@ def home(regions_count, region_centers, guides):
     for name, items in groups:
         tiles = ''.join((f'<a class="tile on" href="{E(live[i])}">{E(i)}</a>' if i in live else f'<span class="tile">{E(i)}<small>준비 중</small></span>') for i in items)
         gh += f'<section class="card"><h2>{E(name)}</h2><div class="tiles">{tiles}</div></section>'
-    body = f'''<section class="hero home"><h1>원하는 시간에,<br>동네 업체를 찾아요</h1><p class="lead">정비소·출장 수리·청소 업체를 동네별로 모았어요. 바로 전화하거나, 곧 원하는 시간에 맞춰 예약 요청도 할 수 있어요.</p></section>
+    body = f'''<section class="hero home"><h1>내 시간에<br><span class="hl">예약방문, 전화</span>하세요</h1><p class="lead">동네 정비소·출장 수리·청소 업체를 모았어요. 원하는 시간에 맞춰 예약하고 방문하거나, 지금 바로 전화하세요.</p></section>
 <section class="card find"><h2>우리 동네 정비소 찾기</h2>
 <label class="search"><span class="sr">지역 검색</span><input id="q" type="search" placeholder="예: 연수구, 제물포구" autocomplete="off"></label>
 <button type="button" id="near" class="btn ghost wide">내 위치에서 가까운 곳</button>
@@ -449,7 +449,7 @@ def home(regions_count, region_centers, guides):
 {owner_cta('동네 업체')}
 <script type="application/json" id="regions">{json.dumps(idx, ensure_ascii=False)}</script>'''
     ld = [{'@context': 'https://schema.org', '@type': 'WebSite', 'name': '내시간에', 'url': BASE + '/'}]
-    return '/', page('내시간에 - 동네 정비소·출장 업체 찾기, 원하는 시간에 예약', '동네 자동차 정비소와 출장 수리 업체의 전화번호·위치를 찾고, 원하는 시간에 맞춰 예약하세요.', '/', body, None, ld)
+    return '/', page('내시간에 - 내 시간에 예약방문, 전화하세요 | 동네 정비소·출장 업체', '내 시간에 예약방문, 전화하세요. 동네 자동차 정비소와 출장 수리 업체의 전화번호·위치를 찾고, 원하는 시간에 맞춰 예약하세요.', '/', body, None, ld)
 
 # ---------------------------------------------------------------- write
 
