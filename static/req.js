@@ -4,7 +4,7 @@
   var W='일월화수목금토',S={step:1,trade:'자동차 정비',job:'엔진오일 교체',mode:'날짜 고르기',day:1,part:'오전',slots:{},flex:'앞뒤 30분 괜찮아요',alt:false,altPick:{},extras:{},memo:'',budget:'잘 모르겠어요',photos:[],sym:{},skip:false};
   var SYM={'자동차 정비':['경고등이 켜졌어요','소리가 나요','시동이 잘 안 걸려요','기름이 새요'],'하수구 막힘':['물이 천천히 내려가요','완전히 막혔어요','냄새가 올라와요','역류해요'],'보일러 고장':['에러 번호가 떠요','소리가 나요','물이 새요','가스 냄새는 안 나요'],'수도 동파':['물이 아예 안 나와요','계량기가 깨졌어요','배관에서 물이 새요'],'누수':['천장에서 떨어져요','벽에 물자국','아랫집에서 연락 왔어요','요금이 갑자기 늘었어요'],'열쇠·도어락':['배터리가 나갔어요','비밀번호를 잊었어요','열쇠를 잃어버렸어요','도어락이 고장 났어요']};
   var qs=new URLSearchParams(location.search),hint=qs.get('t'),REG=(window.NSG&&NSG.regions)||[];S.region=qs.get('r')&&REG.indexOf(qs.get('r'))>=0?qs.get('r'):(REG[0]||'');S.mobile='';S.consent=false;S.sending=false;S.err='';
-  var LIVE=!!(window.NSG&&NSG.api);if(hint&&JOBS[hint]){S.trade=hint;S.job=JOBS[hint].opts[0]}
+  var LIVE=!!(window.NSG&&NSG.api&&NSG.reqLive);if(hint&&JOBS[hint]){S.trade=hint;S.job=JOBS[hint].opts[0]}
   function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   function chip(on,label,act,extra){return '<button type="button" class="opt'+(on?' on':'')+'" aria-pressed="'+on+'" data-act="'+esc(act)+'"'+(extra||'')+'>'+label+'</button>'}
   function day(i){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+i);return d}

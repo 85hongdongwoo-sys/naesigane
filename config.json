@@ -16,8 +16,8 @@
     "열쇠-도어락/인천광역시-연수구"
   ],
   "_comment": "지역 페이지는 전부 만들어 두고, release_plan에 따라 첫날 first곳, 그 뒤 매일 per_day곳씩 자동으로 열어요 (순서는 data/release_order.json, 전화번호 많은 지역부터). 한 번에 다 열려면 release_all을 true로.",
-  "supabase_url": "",
-  "supabase_anon_key": "",
+  "supabase_url": "https://xfmieufynwifqbwwzgmi.supabase.co",
+  "supabase_anon_key": "sb_publishable_40MYzp1n5EEdHSMmvq8FFQ_ls659os0",
   "sms_enabled": false,
   "release_plan": {
     "start": "2026-11-22",
@@ -26,5 +26,6 @@
   },
   "release_all": true,
   "guides_all": true,
-  "ga_id": "G-2MDSJ6P7CY"
+  "ga_id": "G-2MDSJ6P7CY",
+  "requests_live": false
 }

@@ -197,8 +197,8 @@ def page(title, desc, path, body, crumbs=None, jsonld=None, extra_head='', noind
 <p><a href="{E(url_path('소개'))}">소개</a> · <a href="{E(url_path('정보-수정-삭제-요청'))}">정보 수정·삭제 요청</a> · <a href="{E(url_path('개인정보처리방침'))}">개인정보처리방침</a></p>
 <p class="muted">업체 정보는 공공데이터를 바탕으로 하며 실제와 다를 수 있어요.</p>
 </footer>
-<script>window.NSG={{kakao:{json.dumps(CFG.get('kakao_js_key') or '')},api:{json.dumps(CFG.get('supabase_url') or '')},key:{json.dumps(CFG.get('supabase_anon_key') or '')},regions:{json.dumps(sorted(RELEASED) if path.startswith(url_path('요청')) else [], ensure_ascii=False)},sms:{'true' if CFG.get('sms_enabled') else 'false'}}};
-window.NSG.call=function(fn,args){{return fetch(NSG.api+'/rest/v1/rpc/'+fn,{{method:'POST',headers:{{'apikey':NSG.key,'Authorization':'Bearer '+NSG.key,'Content-Type':'application/json'}},body:JSON.stringify(args)}}).then(function(r){{return r.json().then(function(j){{if(!r.ok)throw new Error((j&&j.message)||'잠시 뒤 다시 해 주세요');return j}})}})}};</script>
+<script>window.NSG={{kakao:{json.dumps(CFG.get('kakao_js_key') or '')},api:{json.dumps(CFG.get('supabase_url') or '')},key:{json.dumps(CFG.get('supabase_anon_key') or '')},regions:{json.dumps(sorted(RELEASED) if path.startswith(url_path('요청')) else [], ensure_ascii=False)},sms:{'true' if CFG.get('sms_enabled') else 'false'},reqLive:{'true' if CFG.get('requests_live') else 'false'}}};
+window.NSG.call=function(fn,args){{return fetch(NSG.api+'/rest/v1/rpc/'+fn,{{method:'POST',headers:Object.assign({{'apikey':NSG.key,'Content-Type':'application/json'}},/^eyJ/.test(NSG.key)?{{'Authorization':'Bearer '+NSG.key}}:{{}}),body:JSON.stringify(args)}}).then(function(r){{return r.json().then(function(j){{if(!r.ok)throw new Error((j&&j.message)||'잠시 뒤 다시 해 주세요');return j}})}})}};</script>
 <script src="/app.js?v={V('app.js')}" defer></script>
 {scripts}
 </body>
@@ -603,7 +603,7 @@ def static_pages():
 <p class="lead">손님이 먼저 시간을 정해 요청하면, 사장님은 문자 버튼 세 개로 "가능 / 다른 시간 / 어려움"만 누르면 돼요.</p></section>
 <section class="card"><h2>등록하면 이렇게 바뀌어요</h2><ul class="plain"><li>전화번호·영업시간·가격대를 직접 고칠 수 있어요.</li><li>업체 목록에 '예약 답변 업체'로 표시되고, 손님 예약 요청을 문자로 받아요.</li><li>사업자등록 확인을 거친 업체만 등록돼요.</li></ul></section>
 <section class="card"><h2>지금은 등록 신청을 받고 있어요</h2><p>아래 버튼으로 업체 이름, 사업자등록번호, 연락받을 휴대폰 번호를 보내 주시면 확인 후 연락드려요. 신청은 무료예요.</p>
-<div id="join-mail"><a class="btn dark" href="{E(mail_link('내시간에 사장님 등록 신청'))}">이메일로 등록 신청하기</a><p class="muted">받는 곳: {em}</p></div>
+<div id="join-mail"{' hidden' if CFG.get('supabase_url') else ''}><a class="btn dark" href="{E(mail_link('내시간에 사장님 등록 신청'))}">이메일로 등록 신청하기</a><p class="muted">받는 곳: {em}</p></div>
 <form id="join" class="form" hidden>
 <label class="fld"><span>업체 이름</span><input name="biz_name" required maxlength="60"></label>
 <label class="fld"><span>사업자등록번호 (10자리)</span><input name="biz_no" required inputmode="numeric" placeholder="000-00-00000"></label>
