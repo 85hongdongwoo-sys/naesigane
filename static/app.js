@@ -75,7 +75,7 @@
       var rv=null,rc=new K.RoadviewClient(),pin=new K.Marker({position:c});
       function show(ll,label){rc.getNearestPanoId(ll,80,function(id){
         if(!id){note.textContent='이 근처는 로드뷰가 없어요. 큰길 쪽을 눌러 보세요.';return}
-        rEl.hidden=false;if(!rv)rv=new K.Roadview(rEl);rv.setPanoId(id,ll);pin.setPosition(ll);pin.setMap(m);
+        rEl.hidden=false;if(!rv)rv=new K.Roadview(rEl);rv.setPanoId(id,ll);pin.setPosition(ll);pin.setMap(m);[200,800,1600].forEach(function(t){setTimeout(function(){rv.relayout()},t)});
         note.textContent=(label?label+' 근처 ':'')+'로드뷰예요. 화면을 끌어서 둘러볼 수 있어요.';
       })}
       var pts=JSON.parse(box.dataset.pts||'[]'),bd=new K.LatLngBounds();
