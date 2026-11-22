@@ -85,6 +85,39 @@
       '<p class="addr">'+(o.stars?'<b class="star">★ '+o.stars+'</b> · 업체 후기 '+o.reviews+'건':'아직 후기 없음')+(o.answered?' · 최근 30일 답변 '+o.answered+'건':'')+'</p>'+
       (o.price?'<p class="addr">'+e(o.price)+'</p>':'')+(o.last?'<p class="quote">“'+e(o.last)+'”</p>':'')+
       '<div class="actions two-btn">'+(o.phone?'<a class="btn dark" href="tel:'+e(o.phone.replace(/[^0-9]/g,''))+'">☎ 바로 전화</a>':'')+'<a class="btn blue" href="/요청/?t='+encodeURIComponent(mem.dataset.trade)+'&r='+encodeURIComponent(mem.dataset.region)+'">예약 요청</a></div></article>'}).join('')})}
+  // ---- 안내 페이지: 동네 업체 실시간 목록 (카카오, 저장하지 않음)
+  var live=$('.live-shops');
+  if(live){
+    var list=$('.live-list',live),moreB=$('.live-more',live);
+    function esc2(t){return String(t||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+    function none(msg){list.innerHTML='<p class="muted">'+msg+'</p>'}
+    var started=false;
+    function start(){if(started)return;started=true;
+      loadKakao().then(function(){
+        var S=kakao.maps.services,ps=new S.Places(),kws=live.dataset.kw.split('|'),gu=live.dataset.gu,area=live.dataset.area,seen={},all=[];
+        var o={size:15};if(live.dataset.lat){o.location=new kakao.maps.LatLng(+live.dataset.lat,+live.dataset.lng);o.radius=20000}
+        function one(kw,page){return new Promise(function(res){ps.keywordSearch(area+' '+kw,function(d,st){res(st===S.Status.OK?d:[])},Object.assign({page:page},o))})}
+        (async function(){
+          for(var i=0;i<kws.length;i++){for(var pg=1;pg<=2;pg++){var d=await one(kws[i],pg);
+            d.forEach(function(x){var ad=(x.road_address_name||x.address_name||'');if(!x.phone||seen[x.id]||ad.indexOf(gu)<0)return;seen[x.id]=1;all.push(x)});
+            if(d.length<15)break}}
+          if(!all.length)return none('카카오 지도에서 '+esc2(area)+' 업체를 찾지 못했어요. 아래 네이버 검색으로 찾아보세요.');
+          var shown=0;
+          function card(x,i){var cat=(x.category_name||'').split('>').pop().trim(),ad=x.road_address_name||x.address_name,
+              nav='https://map.naver.com/p/search/'+encodeURIComponent(x.place_name+' '+ad);
+            return '<article class="shop"><div class="shop-head"><span class="pin" aria-hidden="true">'+(i+1)+'</span><h3>'+esc2(x.place_name)+'</h3></div>'+
+              '<p class="addr">'+esc2(ad.split(' ').slice(2).join(' ')||ad)+'</p>'+(cat?'<div class="chips"><span class="chip">'+esc2(cat)+'</span></div>':'')+
+              '<div class="actions"><a class="btn dark call" href="tel:'+esc2(x.phone.replace(/[^0-9]/g,''))+'"><span aria-hidden="true">☎</span> 바로 전화 <small>'+esc2(x.phone)+'</small></a>'+
+              '<a class="btn ghost" href="'+esc2(nav)+'" target="_blank" rel="noopener">길찾기</a></div></article>'}
+          function more(){var next=all.slice(shown,shown+10);list.insertAdjacentHTML('beforeend',next.map(function(x,j){return card(x,shown+j)}).join(''));shown+=next.length;moreB.hidden=shown>=all.length}
+          list.innerHTML='';more();moreB.addEventListener('click',more);
+        })();
+      },function(){none('지금은 업체 목록을 불러올 수 없어요. 아래 네이버 검색으로 찾아보세요.')});
+    }
+    if(!(window.NSG&&NSG.kakao))none('아래 네이버 검색으로 업체를 찾아보세요.');
+    else if('IntersectionObserver' in window){var io=new IntersectionObserver(function(e){if(e[0].isIntersecting){io.disconnect();start()}},{rootMargin:'300px'});io.observe(live)}
+    else start();
+  }
   // ---- 첫 화면 검색 (업종 + 동네)
   var data=$('#regions'),q=$('#q'),out=$('#results');
   if(data&&q){var R=JSON.parse(data.textContent);if(data.dataset.src){fetch(data.dataset.src).then(function(r){return r.json()}).then(function(j){R=j;if(q.value)find(q.value)})}

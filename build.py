@@ -377,6 +377,15 @@ def guide_page(kind, region, ctx=None):
     if near:
         near_html = f'<section class="card"><h2>가까운 지역 {E(G["name"])}</h2><div class="links">' + ''.join(
             f'<a href="{E(url_path("안내", kind, r.replace(" ", "-")))}">{E(short_region(r))}</a>' for r in near) + '</div></section>'
+    ctr = ctx.get('center') or ('', '')
+    live = (f'<section class="card live-shops" data-kw="{E("|".join(G.get("kw", [G["name"]])))}" data-gu="{E(gu.split()[-1])}" data-area="{E(gu)}" data-lat="{ctr[0]}" data-lng="{ctr[1]}">'
+            f'<h2>{E(gu)} {E(G["name"])} 업체</h2>'
+            f'<div id="members" data-region="{E(region)}" data-trade="{E(G["name"])}" hidden></div>'
+            f'<p class="muted live-note">누르면 바로 전화가 걸려요. 업체 목록은 카카오 지도에서 지금 찾아서 보여 줘요.</p>'
+            f'<div class="live-list" aria-live="polite"><p class="muted">업체를 찾는 중이에요…</p></div>'
+            f'<button type="button" class="btn ghost wide live-more" hidden>더 보기</button>'
+            f'<p class="muted"><a href="https://m.search.naver.com/search.naver?query={quote(gu + " " + G.get("kw", [G["name"]])[0])}" target="_blank" rel="noopener">네이버에서 {E(gu)} {E(G["name"])} 더 찾기</a></p>'
+            f'<p class="source">사장님이 내시간에에 등록하면 위쪽에 \'예약 답변 업체\'로 먼저 보이고, 손님 예약 요청을 문자로 받아요. <a href="{E(url_path("사장님"))}">사장님 무료 등록</a></p></section>')
     car = ''
     if ctx.get('shops'):
         car = f'<p class="muted">차 문제라면 <a href="{E(url_path("자동차정비", slug_region(region)))}">{E(gu)} 자동차 정비소 {ctx["shops"]}곳</a>도 볼 수 있어요.</p>'
@@ -396,6 +405,7 @@ def guide_page(kind, region, ctx=None):
     body = f'''<section class="hero"><h1>{E(gu)} {E(G['name'])},<br>{E(G['h1_tail'])}</h1>
 <p class="lead">{E(fill(G['lead']))}</p></section>
 {warn}
+{live}
 <section class="card"><h2>{E(G['steps_title'])}</h2><ol class="steps">{steps}</ol></section>
 <section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul></section>
 {extra}
@@ -669,7 +679,7 @@ def main():
         near = [r for _, r in sorted((km(me, centers[r]), r) for r in gregs if r != reg and r in centers)[:6]] if me else []
         ap = apts.get(reg, [])
         dongs = [d for d, _ in dc.most_common()] or [d for d, _ in Counter(a[1] for a in ap if a[1]).most_common()]
-        ctx = {'dongs': dongs, 'near': near, 'shops': len(ss) if reg in released else 0, 'apts': ap, 'apt_date': apt_date}
+        ctx = {'dongs': dongs, 'near': near, 'shops': len(ss) if reg in released else 0, 'apts': ap, 'apt_date': apt_date, 'center': centers.get(reg)}
         for kind in gkinds:
             if kind in GUIDES:
                 p, h = guide_page(kind, reg, ctx)
