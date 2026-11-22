@@ -99,7 +99,7 @@
         function one(kw,page){return new Promise(function(res){ps.keywordSearch(area+' '+kw,function(d,st){res(st===S.Status.OK?d:[])},Object.assign({page:page},o))})}
         (async function(){
           for(var i=0;i<kws.length;i++){for(var pg=1;pg<=2;pg++){var d=await one(kws[i],pg);
-            d.forEach(function(x){var ad=(x.road_address_name||x.address_name||'');if(!x.phone||seen[x.id])return;seen[x.id]=1;if(ad.indexOf(gu)>=0)all.push(x);else near.push(x)});
+            d.forEach(function(x){var ad=(x.road_address_name||x.address_name||'');if(!x.phone||seen[x.id]||x.category_group_code||/공원|학교|아파트|주차장|음식|카페/.test(x.category_name||''))return;seen[x.id]=1;if(ad.indexOf(gu)>=0)all.push(x);else near.push(x)});
             if(d.length<15)break}}
           if(all.length<5){near.sort(function(p,q){return (+p.distance||9e9)-(+q.distance||9e9)});near.slice(0,10-all.length).forEach(function(x){x._near=1;all.push(x)})}
           if(!all.length)return none('카카오 지도에서 '+esc2(area)+' 업체를 찾지 못했어요. 아래 네이버 검색으로 찾아보세요.');
