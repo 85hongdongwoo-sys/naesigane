@@ -94,13 +94,15 @@
     var started=false;
     function start(){if(started)return;started=true;
       loadKakao().then(function(){
-        var S=kakao.maps.services,ps=new S.Places(),kws=live.dataset.kw.split('|'),gu=live.dataset.gu,area=live.dataset.area,seen={},all=[],near=[];
+        var mustRe=live.dataset.must?new RegExp(live.dataset.must):null,S=kakao.maps.services,ps=new S.Places(),kws=live.dataset.kw.split('|'),gu=live.dataset.gu,area=live.dataset.area,seen={},all=[],near=[];
         var o={size:15};if(live.dataset.lat){o.location=new kakao.maps.LatLng(+live.dataset.lat,+live.dataset.lng);o.radius=20000}
-        function one(kw,page){return new Promise(function(res){ps.keywordSearch(area+' '+kw,function(d,st){res(st===S.Status.OK?d:[])},Object.assign({page:page},o))})}
+        function one(kw,page,plain){return new Promise(function(res){ps.keywordSearch(plain?kw:area+' '+kw,function(d,st){res(st===S.Status.OK?d:[])},Object.assign({page:page},o))})}
         (async function(){
+          function take(d){d.forEach(function(x){var ad=(x.road_address_name||x.address_name||'');if(!x.phone||seen[x.id]||x.category_group_code||/공원|학교|아파트|주차장|음식|카페/.test(x.category_name||'')||(mustRe&&!mustRe.test(x.place_name+' '+(x.category_name||''))))return;seen[x.id]=1;if(ad.indexOf(gu)>=0)all.push(x);else near.push(x)})}
           for(var i=0;i<kws.length;i++){for(var pg=1;pg<=2;pg++){var d=await one(kws[i],pg);
-            d.forEach(function(x){var ad=(x.road_address_name||x.address_name||'');if(!x.phone||seen[x.id]||x.category_group_code||/공원|학교|아파트|주차장|음식|카페/.test(x.category_name||''))return;seen[x.id]=1;if(ad.indexOf(gu)>=0)all.push(x);else near.push(x)});
+            d.forEach(function(x){var ad=(x.road_address_name||x.address_name||'');if(!x.phone||seen[x.id]||x.category_group_code||/공원|학교|아파트|주차장|음식|카페/.test(x.category_name||'')||(mustRe&&!mustRe.test(x.place_name+' '+(x.category_name||''))))return;seen[x.id]=1;if(ad.indexOf(gu)>=0)all.push(x);else near.push(x)});
             if(d.length<15)break}}
+          if(all.length+near.length<5&&o.location){for(var j=0;j<kws.length;j++)take(await one(kws[j],1,true))}
           if(all.length<5){near.sort(function(p,q){return (+p.distance||9e9)-(+q.distance||9e9)});near.slice(0,10-all.length).forEach(function(x){x._near=1;all.push(x)})}
           if(!all.length)return none('카카오 지도에서 '+esc2(area)+' 업체를 찾지 못했어요. 아래 네이버 검색으로 찾아보세요.');
           var shown=0;

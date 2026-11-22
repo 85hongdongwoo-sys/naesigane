@@ -381,7 +381,7 @@ def guide_page(kind, region, ctx=None):
         near_html = f'<section class="card"><h2>가까운 지역 {E(G["name"])}</h2><div class="links">' + ''.join(
             f'<a href="{E(url_path("안내", kind, r.replace(" ", "-")))}">{E(short_region(r))}</a>' for r in near) + '</div></section>'
     ctr = ctx.get('center') or ('', '')
-    live = (f'<section class="card live-shops" data-kw="{E("|".join(G.get("kw", [G["name"]])))}" data-gu="{E(gu.split()[-1])}" data-area="{E(gu)}" data-lat="{ctr[0]}" data-lng="{ctr[1]}">'
+    live = (f'<section class="card live-shops" data-kw="{E("|".join(G.get("kw", [G["name"]])))}" data-gu="{E(gu.split()[-1])}" data-must="{E(G.get('must', ''))}" data-area="{E(gu)}" data-lat="{ctr[0]}" data-lng="{ctr[1]}">'
             f'<h2>{E(gu)} {E(G["name"])} 업체</h2>'
             f'<div id="members" data-region="{E(region)}" data-trade="{E(G["name"])}" hidden></div>'
             f'<p class="muted live-note">누르면 바로 전화가 걸려요. 업체 목록은 카카오 지도에서 지금 찾아서 보여 줘요.</p>'
