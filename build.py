@@ -213,10 +213,10 @@ def shop_card(s, i):
         chips.append(f'<span class="chip">{E(since)}</span>')
     q = s['name'] + ' ' + gu_name(s['region']).split()[-1]
     if s['phone']:
-        call = f'<a class="btn dark call" href="tel:{E(re.sub(r"[^0-9]", "", s["phone"]))}"><span aria-hidden="true">☎</span> {E(s["phone"])}</a>'
+        call = f'<a class="btn dark call" href="tel:{E(re.sub(r"[^0-9]", "", s["phone"]))}"><span aria-hidden="true">☎</span> 바로 전화 <small>{E(s["phone"])}</small></a>'
     else:
         call = (f'<button type="button" class="btn dark call lookup" data-name="{name}" data-q="{E(q)}" '
-                f'data-lat="{s["lat"] or ""}" data-lng="{s["lng"] or ""}"><span aria-hidden="true">☎</span> 전화번호 보기</button>')
+                f'data-lat="{s["lat"] or ""}" data-lng="{s["lng"] or ""}"><span aria-hidden="true">☎</span> 바로 전화</button>')
     nav = f'https://map.naver.com/p/search/{quote(q)}'
     return f'''<article class="shop" id="s{i}" data-type="{E(t)}" data-dong="{E(s['dong'])}" data-phone="{1 if s['phone'] else 0}" data-lat="{s['lat'] or ''}" data-lng="{s['lng'] or ''}">
 <div class="shop-head"><span class="pin" aria-hidden="true">{i + 1}</span><h3>{name}</h3></div>
@@ -256,7 +256,7 @@ def region_page(region, shops, all_regions, region_centers):
         facts.append(f"가장 많은 동네는 <b>{E(top_dongs[0][0])}</b>({top_dongs[0][1]}곳)이고, " + ', '.join(f'{E(d)} {c}곳' for d, c in top_dongs[1:]) + ' 순이에요.' if len(top_dongs) > 1 else f"정비소가 모인 동네는 <b>{E(top_dongs[0][0])}</b>예요.")
     if avg_age:
         facts.append(f'등록한 지 평균 <b>{avg_age}년</b> 된 곳들이고, 20년 넘게 자리를 지킨 곳이 <b>{old20}곳</b>이에요.' + (f' 가장 최근에 문을 연 곳은 {newest}년 등록이에요.' if newest else ''))
-    facts.append(f'전화번호가 공개된 곳은 {ph}곳이에요. 번호가 없는 곳은 <b>전화번호 보기</b>를 누르면 찾아 드려요.' if ph < n else f'{n}곳 모두 전화번호가 공개돼 있어요. 누르면 바로 전화가 걸려요.')
+    facts.append(f'전화번호가 공개된 곳은 {ph}곳이에요. 나머지도 <b>바로 전화</b>를 누르면 번호를 찾아 연결해요.' if ph < n else f'{n}곳 모두 전화번호가 공개돼 있어요. 누르면 바로 전화가 걸려요.')
     if hrs:
         facts.append(f'영업시간이 공개된 곳은 {hrs}곳이에요. 토·일 영업은 업체마다 달라서 전화로 확인해 주세요.')
 
@@ -320,7 +320,7 @@ def region_page(region, shops, all_regions, region_centers):
 {faq_html(faqs)}
 {near_html}
 {owner_cta(gu + ' 정비소')}
-<p class="source">업체 이름·주소·정비 종류·전화번호·영업시간: 국토교통부 전국자동차정비업체표준데이터({E(region)}, {E(CFG['data_date'])} 기준). 실제와 다를 수 있어요. 번호가 없는 곳의 '전화번호 보기'는 누를 때 지도 서비스에서 찾아 보여 드리며 저장하지 않아요. <a href="{E(url_path('정보-수정-삭제-요청'))}">정보 수정·삭제 요청</a></p>'''
+<p class="source">업체 이름·주소·정비 종류·전화번호·영업시간: 국토교통부 전국자동차정비업체표준데이터({E(region)}, {E(CFG['data_date'])} 기준). 실제와 다를 수 있어요. 번호가 없는 곳의 '바로 전화'는 누를 때 지도 서비스에서 번호를 찾아 연결하며, 그 번호는 저장하지 않아요. <a href="{E(url_path('정보-수정-삭제-요청'))}">정보 수정·삭제 요청</a></p>'''
     crumbs = [('홈', '/'), ('자동차 정비', url_path('자동차정비')), (short_region(region).split()[0], url_path('자동차정비')), (gu, path)]
     crumbs = [crumbs[0], crumbs[1], (gu, path)]
     head = '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>'
@@ -392,7 +392,7 @@ def static_pages():
 <p class="lead">내시간에의 업체 정보는 공공데이터(국토교통부 표준데이터 등)를 바탕으로 해요. 정보가 틀렸거나, 사장님이 정보 게시를 원하지 않으시면 알려 주세요.</p></section>
 <section class="card"><h2>요청 방법</h2><ol class="steps"><li><b>업체 이름과 주소</b><span>어느 업체인지 알 수 있게 적어 주세요.</span></li><li><b>원하시는 것</b><span>수정(무엇을 어떻게) 또는 삭제를 적어 주세요.</span></li><li><b>보내기</b><span>요청을 받으면 확인 후 바로 처리하고 결과를 알려 드려요.</span></li></ol>
 <a class="btn dark" href="{E(mail_link('내시간에 업체 정보 수정·삭제 요청'))}">이메일로 요청하기</a><p class="muted">받는 곳: {em}</p></section>
-<section class="card"><h2>정보를 어디서 가져왔나요?</h2><p>공개된 공공데이터에서 업체 이름, 주소, 업종, 전화번호, 영업시간을 가져와요. 전화번호가 없는 업체는 손님이 '전화번호 보기'를 누를 때만 지도 서비스에서 찾아 화면에 보여 주며, 그 번호를 저장하지 않아요. 개인정보 보호법 제20조에 따라 요청하시면 수집 출처와 이용 목적을 알려 드리고, 처리 정지를 요청하실 수 있어요.</p></section>''')
+<section class="card"><h2>정보를 어디서 가져왔나요?</h2><p>공개된 공공데이터에서 업체 이름, 주소, 업종, 전화번호, 영업시간을 가져와요. 전화번호가 없는 업체는 손님이 '바로 전화'를 누를 때만 지도 서비스에서 찾아 화면에 보여 주며, 그 번호를 저장하지 않아요. 개인정보 보호법 제20조에 따라 요청하시면 수집 출처와 이용 목적을 알려 드리고, 처리 정지를 요청하실 수 있어요.</p></section>''')
     p = url_path('개인정보처리방침')
     pages[p] = page('개인정보처리방침 | 내시간에', '내시간에 개인정보처리방침', p, f'''<section class="hero"><h1>개인정보처리방침</h1><p class="lead">시행일: {TODAY.isoformat()}</p></section>
 <section class="card"><h2>1. 손님 정보</h2><p>지금 내시간에는 손님에게 회원가입이나 개인정보 입력을 받지 않아요. 예약 요청 기능이 열리면 요청 전달과 답변 문자 발송에 필요한 휴대폰 번호만 동의를 받아 받고, 30일 뒤 지워요.</p></section>

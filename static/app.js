@@ -42,14 +42,14 @@
     var card=b.closest('.shop'),note=$('.lookup-note',card),q=b.dataset.q,name=b.dataset.name;
     function fallback(){window.open('https://m.search.naver.com/search.naver?query='+encodeURIComponent(q),'_blank','noopener')}
     if(!(window.NSG&&NSG.kakao)){fallback();note.hidden=false;note.textContent='네이버 검색에서 '+name+' 전화번호를 확인하세요.';return}
-    b.disabled=true;b.textContent='찾는 중…';
+    b.disabled=true;b.textContent='번호 찾는 중…';
     loadKakao().then(function(){
       var ps=new kakao.maps.services.Places(),opt={};
       if(b.dataset.lat){opt.location=new kakao.maps.LatLng(+b.dataset.lat,+b.dataset.lng);opt.radius=300;opt.sort=kakao.maps.services.SortBy.DISTANCE}
       ps.keywordSearch(name,function(res,st){
         var hit=(st===kakao.maps.services.Status.OK)&&res.filter(function(r){return r.phone})[0];
-        if(hit){var a=document.createElement('a');a.className='btn dark call';a.href='tel:'+hit.phone.replace(/[^0-9]/g,'');a.innerHTML='<span aria-hidden="true">☎</span> '+hit.phone;b.replaceWith(a);
-          note.hidden=false;note.textContent='카카오 지도에 등록된 번호예요.';}
+        if(hit){var tel='tel:'+hit.phone.replace(/[^0-9]/g,''),a=document.createElement('a');a.className='btn dark call';a.href=tel;a.innerHTML='<span aria-hidden="true">☎</span> 바로 전화 <small>'+hit.phone+'</small>';b.replaceWith(a);
+          note.hidden=false;note.textContent='카카오 지도에 등록된 번호로 연결해요.';location.href=tel;}
         else{b.disabled=false;b.textContent='네이버에서 번호 찾기';b.onclick=function(e){e.stopImmediatePropagation();fallback()};note.hidden=false;note.textContent='등록된 번호를 못 찾았어요.';}
       },opt);
     },function(){fallback()});
