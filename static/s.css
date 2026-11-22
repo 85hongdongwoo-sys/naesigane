@@ -130,3 +130,19 @@ main{max-width:720px;margin:0 auto;padding:0 16px 24px}
 .ph.add input{position:absolute;width:1px;height:1px;opacity:0}
 .ph.add span{display:flex;flex-direction:column;align-items:center;font-size:22px;color:#4E5968;font-weight:700}
 .ph.add small{font-size:12px}
+.fld select,.fld input{min-height:52px;padding:0 14px;border:1px solid #D1D6DB;border-radius:12px;font:inherit;font-size:16px;color:#191F28;background:#fff}
+.agree{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13.5px;color:#4E5968;line-height:1.55}
+.agree input{width:22px;height:22px;flex:0 0 auto;margin:0}
+.err{margin:10px 0 0;color:#C0262D;font-weight:700;font-size:14px}
+.tag{margin-left:auto;flex:0 0 auto;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:800;background:#EEF1F5;color:#4E5968}
+.tag.ok{background:#E6F6EE;color:#166534}.tag.other{background:#FFF4E0;color:#8A4B00}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.two>div{display:flex;flex-direction:column;padding:10px 12px;background:#F2F4F6;border-radius:12px}
+.two small{font-size:12.5px;color:#4E5968}.two b{font-size:16px;font-weight:800}
+.ok{color:#166534}
+.shop.chosen{border:2px solid #166534}
+.stars{display:flex;gap:4px;margin-bottom:10px}
+.stars button{width:48px;height:48px;border:0;background:none;font-size:36px;line-height:1;color:#D1D6DB;cursor:pointer;padding:0}
+.stars button.on{color:#FFB020}
+.seg.three{margin-top:0}
+.form .fld{margin-top:12px}

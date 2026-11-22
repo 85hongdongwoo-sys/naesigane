@@ -170,7 +170,8 @@ def page(title, desc, path, body, crumbs=None, jsonld=None, extra_head='', noind
 <p><a href="{E(url_path('소개'))}">소개</a> · <a href="{E(url_path('정보-수정-삭제-요청'))}">정보 수정·삭제 요청</a> · <a href="{E(url_path('개인정보처리방침'))}">개인정보처리방침</a></p>
 <p class="muted">업체 정보는 공공데이터를 바탕으로 하며 실제와 다를 수 있어요.</p>
 </footer>
-<script>window.NSG={{kakao:{json.dumps(CFG.get('kakao_js_key') or '')}}};</script>
+<script>window.NSG={{kakao:{json.dumps(CFG.get('kakao_js_key') or '')},api:{json.dumps(CFG.get('supabase_url') or '')},key:{json.dumps(CFG.get('supabase_anon_key') or '')},regions:{json.dumps(CFG['released_regions'], ensure_ascii=False)},sms:{'true' if CFG.get('sms_enabled') else 'false'}}};
+window.NSG.call=function(fn,args){{return fetch(NSG.api+'/rest/v1/rpc/'+fn,{{method:'POST',headers:{{'apikey':NSG.key,'Authorization':'Bearer '+NSG.key,'Content-Type':'application/json'}},body:JSON.stringify(args)}}).then(function(r){{return r.json().then(function(j){{if(!r.ok)throw new Error((j&&j.message)||'잠시 뒤 다시 해 주세요');return j}})}})}};</script>
 <script src="/app.js" defer></script>
 {scripts}
 </body>
@@ -312,7 +313,7 @@ def region_page(region, shops, all_regions, region_centers):
 </div>
 <button type="button" class="btn ghost wide more" hidden>더 보기</button>
 </section>
-<section class="card soon"><h2>원하는 시간에 맞춰 예약하는 기능, 준비 중이에요</h2><p>시간을 정해 요청하면 {E(gu)} 정비소 사장님이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. 사장님 가입이 시작되면 이 동네부터 열려요. <a href="{E(url_path('요청'))}?t={quote('자동차 정비')}">어떻게 요청하는지 미리 보기</a></p></section>
+<section class="card soon"><h2>원하는 시간에 맞춰 예약하는 기능, 준비 중이에요</h2><p>시간을 정해 요청하면 {E(gu)} 정비소 사장님이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. 사장님 가입이 시작되면 이 동네부터 열려요. <a href="{E(url_path('요청'))}?t={quote('자동차 정비')}&amp;r={quote(region)}">어떻게 요청하는지 미리 보기</a></p></section>
 {types_html}
 {faq_html(faqs)}
 {near_html}
@@ -348,7 +349,7 @@ def guide_page(kind, region):
 <section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul></section>
 {extra}
 {f'<section class="card"><h2>업체에 전화할 때 꼭 물어볼 것</h2><ul class="plain">{ask}</ul></section>' if ask else ''}
-<section class="card soon"><h2>원하는 시간에 맞춰 부르는 기능, 준비 중이에요</h2><p>시간과 예산을 정해 요청하면 {E(gu)} 업체 사장님들이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. <a href="{E(url_path('요청'))}?t={quote(G['name'] if G['name'] != '누수' else '누수')}">어떻게 요청하는지 미리 보기</a></p></section>
+<section class="card soon"><h2>원하는 시간에 맞춰 부르는 기능, 준비 중이에요</h2><p>시간과 예산을 정해 요청하면 {E(gu)} 업체 사장님들이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. <a href="{E(url_path('요청'))}?t={quote(G['name'])}&amp;r={quote(region)}">어떻게 요청하는지 미리 보기</a></p></section>
 {faq_html(faqs)}
 <section class="card"><h2>{E(gu)}의 다른 급한 일</h2><div class="links">{others}</div></section>
 {owner_cta(gu + ' ' + G['name'])}
@@ -370,7 +371,20 @@ def static_pages():
 <p class="lead">손님이 먼저 시간을 정해 요청하면, 사장님은 문자 버튼 세 개로 "가능 / 다른 시간 / 어려움"만 누르면 돼요.</p></section>
 <section class="card"><h2>등록하면 이렇게 바뀌어요</h2><ul class="plain"><li>전화번호·영업시간·가격대를 직접 고칠 수 있어요.</li><li>업체 목록에 '예약 답변 업체'로 표시되고, 손님 예약 요청을 문자로 받아요.</li><li>사업자등록 확인을 거친 업체만 등록돼요.</li></ul></section>
 <section class="card"><h2>지금은 등록 신청을 받고 있어요</h2><p>아래 버튼으로 업체 이름, 사업자등록번호, 연락받을 휴대폰 번호를 보내 주시면 확인 후 연락드려요. 신청은 무료예요.</p>
-<a class="btn dark" href="{E(mail_link('내시간에 사장님 등록 신청'))}">이메일로 등록 신청하기</a><p class="muted">받는 곳: {em}</p></section>''')
+<div id="join-mail"><a class="btn dark" href="{E(mail_link('내시간에 사장님 등록 신청'))}">이메일로 등록 신청하기</a><p class="muted">받는 곳: {em}</p></div>
+<form id="join" class="form" hidden>
+<label class="fld"><span>업체 이름</span><input name="biz_name" required maxlength="60"></label>
+<label class="fld"><span>사업자등록번호 (10자리)</span><input name="biz_no" required inputmode="numeric" placeholder="000-00-00000"></label>
+<label class="fld"><span>대표자 이름</span><input name="owner_name" maxlength="30"></label>
+<label class="fld"><span>요청 알림 받을 휴대폰</span><input name="mobile" required type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
+<label class="fld"><span>손님에게 보일 업체 전화 (선택)</span><input name="public_phone" type="tel" placeholder="032-000-0000"></label>
+<label class="fld"><span>업종</span><select name="trade" required>{''.join(f'<option>{E(t)}</option>' for t in ['자동차 정비','하수구 막힘','보일러 고장','수도 동파','누수','열쇠·도어락'])}</select></label>
+<label class="fld"><span>지역</span><select name="region" required>{''.join(f'<option>{E(r)}</option>' for r in CFG['released_regions'])}</select></label>
+<label class="fld"><span>업체 주소</span><input name="address" maxlength="120"></label>
+<label class="fld"><span>대표 가격대 (선택)</span><input name="price_note" maxlength="100" placeholder="예: 엔진오일 5만~7만 원(공임 포함)"></label>
+<label class="agree"><input type="checkbox" name="sms_consent" required><span>손님 예약 요청 알림 문자를 받는 데 동의해요. 언제든 그만 받을 수 있어요.</span></label>
+<p id="join-msg" class="err" aria-live="polite"></p>
+<button type="submit" class="btn blue wide">무료 등록 신청하기</button></form></section>''', scripts='<script src="/flow.js" defer></script>')
     p = url_path('정보-수정-삭제-요청')
     pages[p] = page('업체 정보 수정·삭제 요청 | 내시간에', '내시간에에 실린 업체 정보의 수정이나 삭제를 요청하는 방법이에요.', p, f'''<section class="hero"><h1>업체 정보 수정·삭제 요청</h1>
 <p class="lead">내시간에의 업체 정보는 공공데이터(국토교통부 표준데이터 등)를 바탕으로 해요. 정보가 틀렸거나, 사장님이 정보 게시를 원하지 않으시면 알려 주세요.</p></section>
@@ -386,6 +400,10 @@ def static_pages():
     p = url_path('요청')
     pages[p] = page('원하는 시간에 예약 요청 (미리 보기) | 내시간에', '원하는 날짜·시간·예산을 정해 동네 업체에 한 번에 요청하는 화면 미리 보기예요.', p,
         '<div id="req" aria-live="polite"><noscript>이 화면은 자바스크립트가 필요해요.</noscript></div>', noindex=True, scripts='<script src="/req.js" defer></script>')
+    p = url_path('내-요청')
+    pages[p] = page('내 요청 | 내시간에', '내 예약 요청과 업체 답변', p, '<div id="my" aria-live="polite"></div>', noindex=True, scripts='<script src="/flow.js" defer></script>')
+    p = url_path('답변')
+    pages[p] = page('손님 요청에 답하기 | 내시간에', '사장님 답변 화면', p, '<div id="reply" aria-live="polite"></div>', noindex=True, scripts='<script src="/flow.js" defer></script>')
     p = url_path('소개')
     pages[p] = page('내시간에 소개 | 원하는 시간에 맞춰 답하는 동네 업체', '손님이 원하는 시간을 먼저 정하면 동네 업체가 맞춰 답하는 서비스, 내시간에를 소개해요.', p, f'''<section class="hero"><h1>돈 내는 손님이<br>시간을 먼저 정해요</h1><p class="lead">내시간에는 동네 업체를 찾고, 원하는 시간에 맞춰 예약할 수 있게 돕는 서비스예요.</p></section>
 <section class="card"><h2>지금 할 수 있는 것</h2><ul class="plain"><li>지역별 자동차 정비소 목록, 전화번호, 위치, 정비 종류 보기</li><li>번호를 눌러 바로 전화하기</li><li>막힘·누수처럼 급한 일에 먼저 해 볼 것 안내</li></ul></section>
@@ -468,7 +486,8 @@ def main():
     p, h = trade_index(rc); write(p, h); urls.append(p)
     p, h = home(rc, centers, guides); write(p, h); urls.insert(0, p)
     for p, h in static_pages().items():
-        write(p, h); urls.append(p)
+        write(p, h)
+        if 'noindex' not in h: urls.append(p)
     write('/404', page('페이지를 찾을 수 없어요 | 내시간에', '페이지를 찾을 수 없어요.', '/404/', '<section class="hero"><h1>페이지를 찾을 수 없어요</h1><p class="lead"><a href="/">첫 화면으로 가기</a></p></section>', noindex=True))
     shutil.move(os.path.join(OUT, '404', 'index.html'), os.path.join(OUT, '404.html')); os.rmdir(os.path.join(OUT, '404'))
     sm = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + ''.join(

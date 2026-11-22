@@ -3,7 +3,8 @@
   var JOBS={'자동차 정비':{min:40,opts:['엔진오일 교체','타이어','배터리','브레이크','점검·기타']},'하수구 막힘':{min:60,opts:['변기','싱크대','욕실·베란다 바닥','기타']},'보일러 고장':{min:60,opts:['난방 안 됨','온수 안 나옴','에러 표시','물 샘·소음']},'수도 동파':{min:60,opts:['물이 안 나옴','계량기 깨짐','배관 터짐']},'누수':{min:90,opts:['천장','벽','바닥','수도 요금 급증']},'열쇠·도어락':{min:30,opts:['문 열기','도어락 교체','열쇠 복사']}};
   var W='일월화수목금토',S={step:1,trade:'자동차 정비',job:'엔진오일 교체',mode:'날짜 고르기',day:1,part:'오전',slots:{},flex:'앞뒤 30분 괜찮아요',alt:false,altPick:{},extras:{},memo:'',budget:'잘 모르겠어요',photos:[],sym:{},skip:false};
   var SYM={'자동차 정비':['경고등이 켜졌어요','소리가 나요','시동이 잘 안 걸려요','기름이 새요'],'하수구 막힘':['물이 천천히 내려가요','완전히 막혔어요','냄새가 올라와요','역류해요'],'보일러 고장':['에러 번호가 떠요','소리가 나요','물이 새요','가스 냄새는 안 나요'],'수도 동파':['물이 아예 안 나와요','계량기가 깨졌어요','배관에서 물이 새요'],'누수':['천장에서 떨어져요','벽에 물자국','아랫집에서 연락 왔어요','요금이 갑자기 늘었어요'],'열쇠·도어락':['배터리가 나갔어요','비밀번호를 잊었어요','열쇠를 잃어버렸어요','도어락이 고장 났어요']};
-  var hint=new URLSearchParams(location.search).get('t');if(hint&&JOBS[hint]){S.trade=hint;S.job=JOBS[hint].opts[0]}
+  var qs=new URLSearchParams(location.search),hint=qs.get('t'),REG=(window.NSG&&NSG.regions)||[];S.region=qs.get('r')&&REG.indexOf(qs.get('r'))>=0?qs.get('r'):(REG[0]||'');S.mobile='';S.consent=false;S.sending=false;S.err='';
+  var LIVE=!!(window.NSG&&NSG.api);if(hint&&JOBS[hint]){S.trade=hint;S.job=JOBS[hint].opts[0]}
   function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   function chip(on,label,act,extra){return '<button type="button" class="opt'+(on?' on':'')+'" aria-pressed="'+on+'" data-act="'+esc(act)+'"'+(extra||'')+'>'+label+'</button>'}
   function day(i){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+i);return d}
@@ -22,7 +23,8 @@
   function render(){
     var h='',n=5;
     h+='<div class="rq-top"><button type="button" class="rq-back" data-act="back" aria-label="이전 단계"'+(S.step===1?' disabled':'')+'>‹</button><div class="rq-prog"><span>'+S.step+' / '+n+'</span><div><i style="width:'+(S.step/n*100)+'%"></i></div></div></div>';
-    if(S.step===1){h+='<h1>어떤 일이 필요하세요?</h1><div class="rq-grid">'+Object.keys(JOBS).map(function(t){return chip(S.trade===t,t,'trade:'+t)}).join('')+'</div>';
+    if(S.step===1){h+='<label class="fld"><span>어느 동네예요?</span><select id="reg">'+REG.map(function(r){return '<option'+(r===S.region?' selected':'')+'>'+esc(r)+'</option>'}).join('')+'</select></label>';
+      h+='<h1>어떤 일이 필요하세요?</h1><div class="rq-grid">'+Object.keys(JOBS).map(function(t){return chip(S.trade===t,t,'trade:'+t)}).join('')+'</div>';
       h+='<h2>조금 더 자세히</h2><div class="rq-grid">'+JOBS[S.trade].opts.map(function(o){return chip(S.job===o,o,'job:'+o)}).join('')+'</div>';}
     if(S.step===2){h+='<p class="rq-kicker">'+esc(S.job)+', 알겠어요 · 보통 약 '+JOBS[S.trade].min+'분 걸려요</p><h1>언제가 편하세요?</h1><p class="rq-sub">되는 시간을 여러 개 고르시면 맞는 업체를 더 빨리 찾아요.</p>';
       h+='<div class="seg" role="tablist">'+['지금 바로','오늘 중','날짜 고르기'].map(function(m){return '<button type="button" role="tab" aria-selected="'+(S.mode===m)+'" class="'+(S.mode===m?'on':'')+'" data-act="mode:'+m+'">'+m+'</button>'}).join('')+'</div>';
@@ -51,13 +53,20 @@
       } else h+='<p class="rq-note">알겠어요. 사장님이 답할 때 "현장 확인 후 가격 안내"로 답할 수 있어요.</p>';
     }
     if(S.step===4){h+='<p class="rq-kicker">사장님이 가격대를 맞춰 드려요</p><h1>생각해 두신 예산이 있으세요?</h1><div class="rq-grid two">'+['5만 원 이하','5만~10만 원','10만~20만 원','20만 원 이상','잘 모르겠어요'].map(function(b){return chip(S.budget===b,b,'bud:'+b)}).join('')+'</div>';}
-    if(S.step===5){h+='<p class="rq-kicker">거의 다 됐어요</p><h1>이렇게 여쭤볼게요</h1><div class="rq-sum">'+esc(summary())+'</div>'+
-      (S.photos.length?'<div class="photos">'+S.photos.map(function(u){return '<span class="ph"><img src="'+u+'" alt=""></span>'}).join('')+'</div>':'')+'<div class="rq-note"><b>예약 요청 보내기는 곧 열려요.</b> 사장님 가입이 시작되면 이 내용이 동네 업체 여러 곳에 한 번에 가고, 가능한 시간과 가격대로 답이 와요. 지금은 이 내용을 복사해서 업체에 문자로 보내거나 전화로 읽어 주세요.</div>'+
+    if(S.step===5){h+='<p class="rq-kicker">거의 다 됐어요</p><h1>이렇게 여쭤볼게요</h1><div class="rq-sum">'+esc(S.region+' · '+summary())+'</div>'+
+      (S.photos.length?'<div class="photos">'+S.photos.map(function(u){return '<span class="ph"><img src="'+u+'" alt=""></span>'}).join('')+'</div>':'');
+      if(LIVE){h+='<label class="fld"><span>답이 오면 받을 휴대폰 번호</span><input id="mob" type="tel" inputmode="tel" placeholder="010-0000-0000" value="'+esc(S.mobile)+'"></label>'+
+        '<label class="agree"><input type="checkbox" data-act="consent"'+(S.consent?' checked':'')+'><span>요청을 업체에 전하고 답을 문자로 받기 위해 번호·사진·내용을 쓰는 데 동의해요. 30일 뒤 지워져요.</span></label>'+
+        (S.err?'<p class="err" role="alert">'+esc(S.err)+'</p>':'')+
+        '<button type="button" class="btn blue wide" data-act="send"'+(S.sending?' disabled':'')+'>'+(S.sending?'보내는 중…':'업체들에 여쭤보기')+'</button>';}
+      else h+='<div class="rq-note"><b>예약 요청 보내기는 곧 열려요.</b> 사장님 가입이 시작되면 이 내용이 동네 업체 여러 곳에 한 번에 가고, 가능한 시간과 가격대로 답이 와요. 지금은 이 내용을 복사해서 업체에 문자로 보내거나 전화로 읽어 주세요.</div>'+
       '<button type="button" class="btn dark wide" data-act="copy">요청 내용 복사하기</button><a class="btn ghost wide" href="/자동차정비/">동네 업체 찾아 전화하기</a>';}
     h+='<div class="rq-foot">'+(S.step===3||S.step===4?'<button type="button" class="btn ghost" data-act="next">건너뛰기</button>':'')+(S.step<5?'<button type="button" class="btn blue" data-act="next">다음</button>':'')+'</div>';
     if(S.step===2&&S.mode!=='지금 바로')h+='<p class="rq-live"><b>지금까지</b> '+esc(summary())+'</p>';
     root.innerHTML=h;
     var m=document.getElementById('memo');if(m)m.addEventListener('input',function(){S.memo=m.value});
+    var mb=document.getElementById('mob');if(mb)mb.addEventListener('input',function(){S.mobile=mb.value});
+    var rg=document.getElementById('reg');if(rg)rg.addEventListener('change',function(){S.region=rg.value});
   }
   root.addEventListener('click',function(e){var b=e.target.closest('[data-act]');if(!b||b.tagName==='INPUT')return;var a=b.dataset.act,v=a.slice(a.indexOf(':')+1);
     if(a==='next')S.step=Math.min(5,S.step+1);else if(a==='back')S.step=Math.max(1,S.step-1);
@@ -65,10 +74,17 @@
     else if(a.indexOf('mode:')===0){S.mode=v;if(v==='오늘 중')S.day=0}else if(a.indexOf('day:')===0){S.day=+v;S.mode=S.day===0?'오늘 중':'날짜 고르기'}
     else if(a.indexOf('part:')===0)S.part=v;else if(a.indexOf('slot:')===0)S.slots[v]=!S.slots[v];else if(a.indexOf('flex:')===0)S.flex=v;
     else if(a.indexOf('altp:')===0)S.altPick[v]=!S.altPick[v];else if(a.indexOf('ex:')===0)S.extras[v]=!S.extras[v];else if(a.indexOf('bud:')===0)S.budget=v;else if(a.indexOf('sym:')===0)S.sym[v]=!S.sym[v];else if(a.indexOf('delph:')===0)S.photos.splice(+v,1);
+    else if(a==='send'){var mob=S.mobile.replace(/[^0-9]/g,'');
+      if(!/^01[0-9]{8,9}$/.test(mob)){S.err='휴대폰 번호를 확인해 주세요.';render();return}
+      if(!S.consent){S.err='동의에 체크해 주세요.';render();return}
+      S.err='';S.sending=true;render();
+      NSG.call('create_request',{p:{trade:S.trade,job:S.job,region:S.region,summary:summary(),when:{mode:S.mode,day:dtxt(day(S.day)),slots:Object.keys(S.slots).filter(function(k){return S.slots[k]}),flex:S.flex,alt:S.alt?Object.keys(S.altPick).filter(function(k){return S.altPick[k]}):[]},memo:S.memo,photos:S.photos,skip:S.skip,mobile:mob,consent:true}})
+        .then(function(r){location.href='/내-요청/#'+r.token},function(e){S.sending=false;S.err=e.message;render()});return}
     else if(a==='copy'){var t=summary();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='복사했어요'},function(){b.textContent='길게 눌러 복사해 주세요'});return}
     render();if(a==='next'||a==='back')window.scrollTo(0,0)});
   root.addEventListener('change',function(e){var t=e.target;
     if(t.dataset.act==='alt'){S.alt=t.checked;render()}
+    else if(t.dataset.act==='consent'){S.consent=t.checked}
     else if(t.dataset.act==='skip'){S.skip=t.checked;render()}
     else if(t.id==='phin'){var fs=[].slice.call(t.files).slice(0,3-S.photos.length),left=fs.length;if(!left)return;
       fs.forEach(function(f){var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){var c=document.createElement('canvas'),k=Math.min(1,640/Math.max(im.width,im.height));c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);S.photos.push(c.toDataURL('image/jpeg',0.8));if(--left===0)render()};im.src=r.result};r.readAsDataURL(f)})}});
