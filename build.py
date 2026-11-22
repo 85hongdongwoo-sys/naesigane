@@ -85,6 +85,9 @@ def load_shops():
                 nm, ad = k.split('|', 1)
                 if s['name'] == nm and ad in s['addr']:
                     s['phone'] = v
+    hid_path = os.path.join(ROOT, 'data', 'hidden_shops.json')
+    hidden = [h.split('|', 1) for h in json.load(open(hid_path, encoding='utf-8')).get('hidden', [])] if os.path.exists(hid_path) else []
+    shops = [s for s in shops if not any(s['name'] == nm and ad in s['addr'] for nm, ad in hidden)]
     out = []
     for s in shops:
         if s['status'] != '1' or not s['name'] or not s['addr']:
