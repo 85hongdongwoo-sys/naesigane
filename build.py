@@ -77,6 +77,14 @@ def load_shops():
                     continue
                 shops.append(dict(name=f[0], type=f[1], addr=prefix + ' ' + f[2], lat=f[3], lng=f[4], reg=f[5], area=f[6],
                                   status='1', open=f[7], close=f[8], phone=f[9], src_date=CFG['data_date']))
+    ovr_path = os.path.join(ROOT, 'data', 'phone_overrides.json')
+    ovr = {k: v for k, v in json.load(open(ovr_path, encoding='utf-8')).items() if not k.startswith('_')} if os.path.exists(ovr_path) else {}
+    for s in shops:
+        if not (s.get('phone') or '').strip():
+            for k, v in ovr.items():
+                nm, ad = k.split('|', 1)
+                if s['name'] == nm and ad in s['addr']:
+                    s['phone'] = v
     out = []
     for s in shops:
         if s['status'] != '1' or not s['name'] or not s['addr']:
