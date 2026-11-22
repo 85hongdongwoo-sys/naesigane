@@ -94,19 +94,20 @@
     var started=false;
     function start(){if(started)return;started=true;
       loadKakao().then(function(){
-        var S=kakao.maps.services,ps=new S.Places(),kws=live.dataset.kw.split('|'),gu=live.dataset.gu,area=live.dataset.area,seen={},all=[];
+        var S=kakao.maps.services,ps=new S.Places(),kws=live.dataset.kw.split('|'),gu=live.dataset.gu,area=live.dataset.area,seen={},all=[],near=[];
         var o={size:15};if(live.dataset.lat){o.location=new kakao.maps.LatLng(+live.dataset.lat,+live.dataset.lng);o.radius=20000}
         function one(kw,page){return new Promise(function(res){ps.keywordSearch(area+' '+kw,function(d,st){res(st===S.Status.OK?d:[])},Object.assign({page:page},o))})}
         (async function(){
           for(var i=0;i<kws.length;i++){for(var pg=1;pg<=2;pg++){var d=await one(kws[i],pg);
-            d.forEach(function(x){var ad=(x.road_address_name||x.address_name||'');if(!x.phone||seen[x.id]||ad.indexOf(gu)<0)return;seen[x.id]=1;all.push(x)});
+            d.forEach(function(x){var ad=(x.road_address_name||x.address_name||'');if(!x.phone||seen[x.id])return;seen[x.id]=1;if(ad.indexOf(gu)>=0)all.push(x);else near.push(x)});
             if(d.length<15)break}}
+          if(all.length<5){near.sort(function(p,q){return (+p.distance||9e9)-(+q.distance||9e9)});near.slice(0,10-all.length).forEach(function(x){x._near=1;all.push(x)})}
           if(!all.length)return none('카카오 지도에서 '+esc2(area)+' 업체를 찾지 못했어요. 아래 네이버 검색으로 찾아보세요.');
           var shown=0;
           function card(x,i){var cat=(x.category_name||'').split('>').pop().trim(),ad=x.road_address_name||x.address_name,
               nav='https://map.naver.com/p/search/'+encodeURIComponent(x.place_name+' '+ad);
             return '<article class="shop"><div class="shop-head"><span class="pin" aria-hidden="true">'+(i+1)+'</span><h3>'+esc2(x.place_name)+'</h3></div>'+
-              '<p class="addr">'+esc2(ad.split(' ').slice(2).join(' ')||ad)+'</p>'+(cat?'<div class="chips"><span class="chip">'+esc2(cat)+'</span></div>':'')+
+              '<p class="addr">'+esc2(ad.split(' ').slice(2).join(' ')||ad)+'</p>'+'<div class="chips">'+(cat?'<span class="chip">'+esc2(cat)+'</span>':'')+(x._near?'<span class="chip">가까운 지역 · '+esc2(ad.split(' ').slice(0,2).join(' '))+'</span>':'')+'</div>'+
               '<div class="actions"><a class="btn dark call" href="tel:'+esc2(x.phone.replace(/[^0-9]/g,''))+'"><span aria-hidden="true">☎</span> 바로 전화 <small>'+esc2(x.phone)+'</small></a>'+
               '<a class="btn ghost" href="'+esc2(nav)+'" target="_blank" rel="noopener">길찾기</a></div></article>'}
           function more(){var next=all.slice(shown,shown+10);list.insertAdjacentHTML('beforeend',next.map(function(x,j){return card(x,shown+j)}).join(''));shown+=next.length;moreB.hidden=shown>=all.length}
