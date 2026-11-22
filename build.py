@@ -190,7 +190,7 @@ def faq_ld(faqs):
 def owner_cta(what):
     return f'''<section class="card cta-owner">
 <h2>{E(what)} 사장님이세요?</h2>
-<p>무료로 등록하면 전화번호·영업시간을 직접 고칠 수 있고, 손님이 원하는 시간에 맞춘 예약 요청을 문자로 받을 수 있어요.</p>
+<p>무료로 등록하면 전화번호·영업시간을 직접 고칠 수 있고, 손님이 원하는 시간에 맞춘 예약 요청을 받을 수 있어요.</p>
 <a class="btn dark" href="{E(url_path('사장님'))}">무료로 등록 신청하기</a>
 </section>'''
 
@@ -426,30 +426,44 @@ def trade_index(regions_count):
     return path, page('지역별 자동차 정비소 찾기 | 내시간에', '시·군·구별 자동차 정비소 전화번호와 위치, 정비 종류를 찾아보세요.', path, body, [('홈', '/'), ('자동차 정비', path)])
 
 def home(regions_count, region_centers, guides):
-    idx = [{'n': short_region(r), 'g': gu_name(r), 'u': url_path('자동차정비', slug_region(r)), 'c': c,
-            'lat': region_centers[r][0], 'lng': region_centers[r][1]} for r, c in regions_count.items()]
-    groups = [
-        ('집 수리·고장', ['하수구 막힘', '누수 탐지', '열쇠·도어락', '보일러 고장', '정전·전기 고장', '수도 동파', '유리·창문 파손', '에어컨 고장·청소', '수전·싱크대 교체', '옥상·외벽 방수', '정화조 청소']),
-        ('청소·정리·방역', ['입주·이사청소', '줄눈·탄성코트', '유품정리·특수청소', '방역·해충', '비둘기·벌집']),
-        ('상가·업소', ['자동차 정비', '사다리차', '셔터·자동문 수리', '업소용 냉장고', '간판 수리', '팝업 인테리어']),
-    ]
+    # 검색용 색인: 공개된 모든 페이지 (업종 + 동네)
+    idx = []
+    for r, c in regions_count.items():
+        idx.append({'t': '자동차 정비', 'n': f'{short_region(r)} 자동차 정비소', 's': f'{c}곳 · 전화번호·위치', 'u': url_path('자동차정비', slug_region(r)),
+                    'k': f'자동차 정비 정비소 카센터 엔진오일 타이어 배터리 {r}', 'lat': region_centers[r][0], 'lng': region_centers[r][1]})
+    for kind, g in guides:
+        G = GUIDES[kind]; reg = g.strip('/').split('/')[-1].replace('-', ' ', 1)
+        ctr = region_centers.get(reg, (0, 0))
+        idx.append({'t': G['tile'], 'n': f'{short_region(reg)} {G["name"]}', 's': G['h1_tail'], 'u': g,
+                    'k': f'{G["name"]} {G["tile"]} {reg}', 'lat': ctr[0], 'lng': ctr[1]})
     live = {'자동차 정비': url_path('자동차정비')}
     for kind, g in guides:
         live.setdefault(GUIDES[kind]['tile'], g)
-    gh = ''
-    for name, items in groups:
-        tiles = ''.join((f'<a class="tile on" href="{E(live[i])}">{E(i)}</a>' if i in live else f'<span class="tile">{E(i)}<small>준비 중</small></span>') for i in items)
-        gh += f'<section class="card"><h2>{E(name)}</h2><div class="tiles">{tiles}</div></section>'
-    body = f'''<section class="hero home"><h1>내 시간에<br><span class="hl">예약방문, 전화</span>하세요</h1><p class="lead">동네 정비소·출장 수리·청소 업체를 모았어요. 원하는 시간에 맞춰 예약하고 방문하거나, 지금 바로 전화하세요.</p></section>
-<section class="card find"><h2>우리 동네 정비소 찾기</h2>
-<label class="search"><span class="sr">지역 검색</span><input id="q" type="search" placeholder="예: 연수구, 제물포구" autocomplete="off"></label>
+    order = ['보일러 고장', '수도 동파', '하수구 막힘', '누수 탐지', '열쇠·도어락', '자동차 정비']
+    hot = [t for t in order if t in live]
+    icons = {'보일러 고장': '♨', '수도 동파': '❄', '하수구 막힘': '⤓', '누수 탐지': '💧', '열쇠·도어락': '🔑', '자동차 정비': '🚗'}
+    hot_html = ''.join(f'<a class="hot" href="{E(live[t])}"><span class="ic" aria-hidden="true">{icons.get(t, "•")}</span><b>{E(t)}</b></a>' for t in hot)
+    chips = ''.join(f'<button type="button" class="qchip" data-q="{E(t.split("·")[0].split()[0])}">{E(t)}</button>' for t in hot)
+    groups = [
+        ('집 수리·고장', ['정전·전기 고장', '유리·창문 파손', '에어컨 고장·청소', '수전·싱크대 교체', '옥상·외벽 방수', '정화조 청소']),
+        ('청소·정리·방역', ['입주·이사청소', '줄눈·탄성코트', '유품정리·특수청소', '방역·해충', '비둘기·벌집']),
+        ('상가·업소', ['사다리차', '셔터·자동문 수리', '업소용 냉장고', '간판 수리', '팝업 인테리어']),
+    ]
+    soon = ''.join(f'<p class="soon-row"><b>{E(n)}</b> {" · ".join(E(i) for i in items if i not in live)}</p>' for n, items in groups)
+    open_regions = ''.join(f'<a href="{E(url_path("자동차정비", slug_region(r)))}">{E(short_region(r))}</a>' for r in regions_count)
+    body = f'''<section class="hero home"><h1>내 시간에<br><span class="hl">예약방문, 전화</span>하세요</h1><p class="lead">보일러·하수구·누수 같은 출장 수리부터 자동차 정비까지, 동네 업체를 모았어요. 원하는 시간에 맞춰 예약하고 방문하거나, 지금 바로 전화하세요.</p></section>
+<section class="card find"><h2>무엇이 필요하세요?</h2>
+<label class="search"><span class="sr">업종이나 동네 검색</span><input id="q" type="search" placeholder="예: 보일러, 하수구, 연수구 정비" autocomplete="off"></label>
 <button type="button" id="near" class="btn ghost wide">내 위치에서 가까운 곳</button>
-<div id="results" class="links" aria-live="polite"></div></section>
-{gh}
+<div id="results" class="results" aria-live="polite"></div></section>
+<section class="card"><h2>지금 바로 찾을 수 있어요</h2><div class="hots">{hot_html}</div></section>
+<section class="card req-cta"><h2>원하는 시간을 먼저 정하세요</h2><p>날짜·시간·예산을 정해 요청하면, 동네 업체 사장님이 가능한 시간과 가격으로 답해요.</p><a class="btn blue wide" href="{E(url_path('요청'))}">시간 정해 예약 요청하기</a></section>
+<section class="card"><h2>열린 동네</h2><div class="links">{open_regions}</div><p class="muted">동네와 업종은 차례로 늘어나요.</p></section>
+<section class="card"><h2>곧 열려요</h2>{soon}</section>
 {owner_cta('동네 업체')}
 <script type="application/json" id="regions">{json.dumps(idx, ensure_ascii=False)}</script>'''
     ld = [{'@context': 'https://schema.org', '@type': 'WebSite', 'name': '내시간에', 'url': BASE + '/'}]
-    return '/', page('내시간에 - 내 시간에 예약방문, 전화하세요 | 동네 정비소·출장 업체', '내 시간에 예약방문, 전화하세요. 동네 자동차 정비소와 출장 수리 업체의 전화번호·위치를 찾고, 원하는 시간에 맞춰 예약하세요.', '/', body, None, ld)
+    return '/', page('내시간에 - 내 시간에 예약방문, 전화하세요 | 동네 정비소·출장 업체', '내 시간에 예약방문, 전화하세요. 보일러·하수구·누수·열쇠 같은 출장 수리와 자동차 정비소를 동네별로 찾고, 원하는 시간에 맞춰 예약하세요.', '/', body, None, ld)
 
 # ---------------------------------------------------------------- write
 

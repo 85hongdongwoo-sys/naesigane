@@ -77,16 +77,19 @@
       '<p class="addr">'+(o.stars?'<b class="star">★ '+o.stars+'</b> · 업체 후기 '+o.reviews+'건':'아직 후기 없음')+(o.answered?' · 최근 30일 답변 '+o.answered+'건':'')+'</p>'+
       (o.price?'<p class="addr">'+e(o.price)+'</p>':'')+(o.last?'<p class="quote">“'+e(o.last)+'”</p>':'')+
       '<div class="actions two-btn">'+(o.phone?'<a class="btn dark" href="tel:'+e(o.phone.replace(/[^0-9]/g,''))+'">☎ 바로 전화</a>':'')+'<a class="btn blue" href="/요청/?t='+encodeURIComponent(mem.dataset.trade)+'&r='+encodeURIComponent(mem.dataset.region)+'">예약 요청</a></div></article>'}).join('')})}
-  // ---- 첫 화면 지역 찾기
+  // ---- 첫 화면 검색 (업종 + 동네)
   var data=$('#regions'),q=$('#q'),out=$('#results');
   if(data&&q){var R=JSON.parse(data.textContent);
-    function show(list){out.innerHTML=list.slice(0,8).map(function(r){return '<a href="'+r.u+'">'+r.n+' 정비소 <span class="muted">'+r.c+'곳</span></a>'}).join('')||'<span class="muted">아직 공개되지 않은 지역이에요. 곧 열릴 거예요.</span>'}
-    show(R);
-    q.addEventListener('input',function(){var v=q.value.replace(/\s/g,'');show(R.filter(function(r){return r.n.replace(/\s/g,'').indexOf(v)>=0}))});
+    function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+    function show(list,empty){out.innerHTML=list.slice(0,8).map(function(r){return '<a class="res" href="'+r.u+'"><b>'+esc(r.n)+'</b><span>'+esc(r.s)+'</span></a>'}).join('')||'<p class="muted">'+(empty||'아직 열리지 않은 업종·동네예요. 곧 늘어나요.')+'</p>'}
+    function find(v){v=v.replace(/\s/g,'');if(!v){out.innerHTML='';return}var words=v.match(/.{1,2}/g)||[];
+      show(R.filter(function(r){var k=(r.k+r.n).replace(/\s/g,'');return k.indexOf(v)>=0||words.every(function(w){return k.indexOf(w)>=0})}))}
+    q.addEventListener('input',function(){find(q.value)});
+    $$('.qchip').forEach(function(c){c.addEventListener('click',function(){q.value=c.dataset.q;find(q.value)})});
     $('#near').addEventListener('click',function(){
-      if(!navigator.geolocation){return}
+      if(!navigator.geolocation){show([],'이 기기에서는 위치를 쓸 수 없어요.');return}
       navigator.geolocation.getCurrentPosition(function(p){var la=p.coords.latitude,lo=p.coords.longitude;
-        show(R.slice().sort(function(a,b){return Math.hypot(a.lat-la,a.lng-lo)-Math.hypot(b.lat-la,b.lng-lo)}))},function(){out.insertAdjacentHTML('afterbegin','<span class="muted">위치를 쓸 수 없어요. 지역 이름으로 찾아 주세요.</span>')});
+        show(R.filter(function(r){return r.lat}).sort(function(a,b){return Math.hypot(a.lat-la,a.lng-lo)-Math.hypot(b.lat-la,b.lng-lo)}))},function(){show([],'위치를 쓸 수 없어요. 업종이나 동네 이름으로 찾아 주세요.')});
     });
   }
 })();
