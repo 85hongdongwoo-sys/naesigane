@@ -14,6 +14,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(ROOT, '_site')
 CFG = json.load(open(os.path.join(ROOT, 'config.json'), encoding='utf-8'))
 RELEASED = []  # main()에서 채움: 공개된 지역 전체
+FOOD_PAGES = []
 import hashlib
 def V(name):  # 정적 파일 캐시 갱신용 버전
     return hashlib.md5(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', name), 'rb').read()).hexdigest()[:8]
@@ -237,6 +238,64 @@ def act_row(trade, region, name, call_html, nav):
 def lookup_btn(name, q, lat, lng, car=False):
     return (f'<button type="button" class="btn ghost sm call lookup" data-name="{E(name)}" data-q="{E(q)}" '
             f'data-lat="{lat or ""}" data-lng="{lng or ""}"{" data-car=\"1\"" if car else ""}><span aria-hidden="true">☎</span> 전화</button>')
+
+FOOD = json.load(open(os.path.join(ROOT, 'data', 'food_meta.json'), encoding='utf-8')) if os.path.exists(os.path.join(ROOT, 'data', 'food_meta.json')) else {}
+
+def food_card(rec, i, g, region):
+    name, short, dong, lat, lng, sub = rec
+    gu = gu_name(region)
+    q = name + ' ' + gu.split()[-1]
+    nav = f'https://map.naver.com/p/search/{quote(name + " " + gu + " " + short)}'
+    base = url_path('요청') + '?r=' + quote(region) + '&s=' + quote(name)
+    chips = ''.join(f'<span class="chip">{E(c)}</span>' for c in (sub, dong) if c)
+    return (f'<article class="shop" id="s{i}"><div class="shop-head"><span class="pin" aria-hidden="true">{i + 1}</span><h3>{E(name)}</h3></div>'
+            f'<p class="addr">{E(short)}</p><div class="chips">{chips}</div>'
+            f'<div class="actions two-btn"><a class="btn book" href="{E(base + "&t=" + quote("단체 예약"))}">단체 예약 요청<span class="dev">개발 중</span></a>'
+            f'<a class="btn book" href="{E(base + "&t=" + quote("포장 예약"))}">포장 예약<span class="dev">개발 중</span></a></div>'
+            f'<div class="actions two-btn">{lookup_btn(name, q, lat, lng)}<a class="btn ghost sm" href="{E(nav)}" target="_blank" rel="noopener">길찾기</a></div>'
+            f'<p class="lookup-note" hidden></p></article>')
+
+def food_page(g, region, entry, ctx):
+    M = FOOD[g]; gu = gu_name(region); sr = short_region(region)
+    path = url_path('음식점', g, region.replace(' ', '-'))
+    lst = entry['list'][:60]; n = entry['n']
+    cards = ''.join(food_card(r, i, g, region) for i, r in enumerate(lst))
+    dongs = [d for d, _ in Counter(r[2] for r in entry['list'] if r[2]).most_common(10)]
+    others = ''.join(f'<a href="{E(url_path("음식점", k, region.replace(" ", "-")))}">{E(gu)} {E(FOOD[k]["name"])}</a>' for k in FOOD if k != g and k in ctx.get('groups_here', ()))
+    near = ''.join(f'<a href="{E(url_path("음식점", g, r.replace(" ", "-")))}">{E(short_region(r))}</a>' for r in ctx.get('near', []))
+    sd = ctx.get('date', '')
+    body = f'''<section class="hero"><h1>{E(gu)} {E(M['name'])},<br>단체 예약·포장 전화</h1>
+<p class="lead">{E(region)}의 {E(M['what'])} {n}곳이에요. 모임 인원이나 포장할 시간을 정해서 바로 전화하세요.</p></section>
+<section class="card"><h2>{E(gu)} {E(M['name'])} {n}곳</h2>
+<div id="members" data-region="{E(region)}" data-trade="{E(M['name'])}" hidden></div>
+<p class="muted">'전화'를 누르면 번호를 찾아 바로 걸려요. '단체 예약 요청'과 '포장 예약'은 원하는 시간과 인원을 정해 가게에 요청하는 기능으로, 지금 만들고 있어요.</p>
+<div class="shops" data-page="20">{cards}</div><button type="button" class="btn ghost wide more" hidden>더 보기</button>
+{f'<p class="muted">그 외 {n - len(lst)}곳은 네이버 지도에서 찾아보세요.</p>' if n > len(lst) else ''}
+<p class="source">가게 이름·주소: 소상공인시장진흥공단 상가(상권)정보{(" (" + sd[:4] + "." + sd[4:6] + ")") if sd else ""}. 영업 상황이 바뀌었을 수 있어요.</p></section>
+<section class="card"><h2>단체 예약 전화할 때</h2><p>{E(M['group'])} 날짜·시간·인원·예산을 한 번에 말하면 통화가 짧아져요.</p></section>
+<section class="card"><h2>포장 예약할 때</h2><p>{E(M['pack'])}</p></section>
+{f'<section class="card"><h2>{E(gu)} 어느 동네에 많아요?</h2><p>{E(" · ".join(dongs))} 순으로 많아요.</p></section>' if dongs else ''}
+{f'<section class="card"><h2>{E(gu)} 다른 음식점</h2><div class="links">{others}</div></section>' if others else ''}
+{f'<section class="card"><h2>가까운 지역 {E(M["name"])}</h2><div class="links">{near}</div></section>' if near else ''}
+{owner_cta(gu + ' ' + M['name'])}'''
+    title = f'{sr} {M["name"]} {n}곳 - 단체 예약·포장 전화번호 | 내시간에'
+    desc = f'{region} {M["what"]} {n}곳. 단체 예약·포장 주문 전에 바로 전화하고 길찾기까지 한 번에.'
+    return path, page(title, desc, path, body, [('홈', '/'), ('음식점', url_path('음식점')), (M['name'], url_path('음식점', g)), (f'{gu} {M["name"]}', path)])
+
+def food_index(g, regions):
+    M = FOOD[g]; path = url_path('음식점', g)
+    by = defaultdict(list)
+    for r in sorted(regions): by[r.split()[0]].append(r)
+    secs = ''.join(f'<section class="card" id="{E(sd)}"><h2>{E(sd)}</h2><div class="links">' + ''.join(
+        f'<a href="{E(url_path("음식점", g, r.replace(" ", "-")))}">{E(gu_name(r))}</a>' for r in rs) + '</div></section>' for sd, rs in by.items())
+    body = f'<section class="hero"><h1>{E(M["name"])} 단체 예약·포장</h1><p class="lead">지역을 고르면 {E(M["what"])} 목록과 바로 전화 버튼이 나와요.</p></section>{secs}'
+    return path, page(f'{M["name"]} 지역별 단체 예약·포장 | 내시간에', f'시·군·구별 {M["what"]} 목록과 전화·길찾기.', path, body, [('홈', '/'), ('음식점', url_path('음식점')), (M['name'], path)])
+
+def food_home():
+    path = url_path('음식점')
+    tiles = ''.join(f'<a class="hot" href="{E(url_path("음식점", g))}"><span class="ic" aria-hidden="true">{M["icon"]}</span><b>{E(M["name"])}</b></a>' for g, M in FOOD.items())
+    body = f'<section class="hero"><h1>음식점 단체 예약·포장</h1><p class="lead">회식·모임 자리 잡기, 포장 주문 전에 동네 가게에 바로 전화하세요.</p></section><section class="card"><div class="hots">{tiles}</div></section>'
+    return path, page('음식점 단체 예약·포장 전화 | 내시간에', '동네 고기집·한식당·횟집·중식당 단체 예약과 포장 주문 전화번호를 지역별로 찾아보세요.', path, body, [('홈', '/'), ('음식점', path)])
 
 def store_card(rec, i, trade, region):
     name, short, dong, lat, lng = rec
@@ -552,6 +611,10 @@ def home(regions_count, region_centers, guides):
         ctr = region_centers.get(reg, (0, 0))
         idx.append({'t': G['tile'], 'n': f'{short_region(reg)} {G["name"]}', 's': G['h1_tail'], 'u': g,
                     'k': f'{G["name"]} {G["tile"]} {reg}', 'lat': ctr[0], 'lng': ctr[1]})
+    for g, reg, fpth in FOOD_PAGES:
+        ctr = region_centers.get(reg, (0, 0))
+        idx.append({'t': '음식점', 'n': f'{short_region(reg)} {FOOD[g]["name"]}', 's': '단체 예약·포장 전화', 'u': fpth,
+                    'k': f'{FOOD[g]["name"]} 맛집 {reg}', 'lat': ctr[0], 'lng': ctr[1]})
     live = {'자동차 정비': url_path('자동차정비')}
     for kind, g in guides:
         live.setdefault(GUIDES[kind]['tile'], url_path('안내', kind) if CFG.get('guides_all') else g)
@@ -581,6 +644,7 @@ def home(regions_count, region_centers, guides):
 <section class="card"><h2>지금 바로 찾을 수 있어요</h2><div class="hots">{hot_html}</div></section>
 <section class="card req-cta"><h2>원하는 시간을 먼저 정하세요</h2><p>날짜·시간·예산을 정해 요청하면, 동네 업체 사장님이 가능한 시간과 가격으로 답해요.</p><a class="btn blue wide" href="{E(url_path('요청'))}">시간 정해 예약 요청하기</a></section>
 <section class="card"><h2>열린 동네</h2><div class="links">{open_regions}</div><p class="muted">동네와 업종은 차례로 늘어나요.</p></section>
+{('<section class="card"><h2>음식점 단체 예약·포장</h2><div class="hots">' + ''.join(f'<a class="hot" href="{E(url_path("음식점", g))}"><span class="ic" aria-hidden="true">{M["icon"]}</span><b>{E(M["name"])}</b></a>' for g, M in FOOD.items()) + '</div></section>') if FOOD_PAGES else ''}
 <section class="card"><h2>집 수리·청소·상가 업종</h2>{more}</section>
 {f'<section class="card"><h2>곧 열려요</h2>{soon}</section>' if soon else ''}
 {owner_cta('동네 업체')}
@@ -731,6 +795,22 @@ def main():
     for kind in gkinds:
         if CFG.get('guides_all') and kind in GUIDES:
             p, h = guide_index(kind, gregs); write(p, h); urls.append(p)
+    fp = os.path.join(ROOT, 'data', 'food.json')
+    food = json.load(open(fp, encoding='utf-8')) if os.path.exists(fp) and FOOD else {'groups': {}}
+    food_pages = []
+    for g, regs in food['groups'].items():
+        if g not in FOOD: continue
+        for reg, entry in regs.items():
+            if len(entry['list']) < 3: continue
+            me = centers.get(reg)
+            nearr = [r for _, r in sorted((km(me, centers[r]), r) for r in regs if r != reg and r in centers and len(regs[r]['list']) >= 3)[:6]] if me else []
+            here = [k for k in food['groups'] if reg in food['groups'][k] and len(food['groups'][k][reg]['list']) >= 3]
+            p, h = food_page(g, reg, entry, {'near': nearr, 'groups_here': here, 'date': food.get('_date', '')})
+            write(p, h); urls.append(p); food_pages.append((g, reg, p))
+        p, h = food_index(g, [r for r in regs if len(regs[r]['list']) >= 3]); write(p, h); urls.append(p)
+    if FOOD and food['groups']:
+        p, h = food_home(); write(p, h); urls.append(p)
+    FOOD_PAGES[:] = food_pages
     rc = {r: len(by_region[r]) for r in released}
     p, h = trade_index(rc); write(p, h); urls.append(p)
     p, h = home(rc, centers, guides); write(p, h); urls.insert(0, p)
