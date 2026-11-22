@@ -153,6 +153,7 @@ def page(title, desc, path, body, crumbs=None, jsonld=None, extra_head='', noind
 <meta property="og:description" content="{E(desc)}">
 <meta property="og:url" content="{E(canonical)}">
 <meta name="theme-color" content="#1B64DA">
+<meta name="naver-site-verification" content="97956313d2e74474464ffa2d5116351dfbe48f90">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
