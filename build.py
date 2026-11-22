@@ -602,7 +602,7 @@ def static_pages():
     pages[p] = page('사장님 무료 등록 신청 | 내시간에', '내시간에에 업체를 무료로 등록하고 손님 예약 요청을 문자로 받아 보세요.', p, f'''<section class="hero"><h1>사장님, 손님이 원하는 시간에<br>맞춰 답해 보세요</h1>
 <p class="lead">손님이 먼저 시간을 정해 요청하면, 사장님은 문자 버튼 세 개로 "가능 / 다른 시간 / 어려움"만 누르면 돼요.</p></section>
 <section class="card"><h2>등록하면 이렇게 바뀌어요</h2><ul class="plain"><li>전화번호·영업시간·가격대를 직접 고칠 수 있어요.</li><li>업체 목록에 '예약 답변 업체'로 표시되고, 손님 예약 요청을 문자로 받아요.</li><li>사업자등록 확인을 거친 업체만 등록돼요.</li></ul></section>
-<section class="card"><h2>지금은 등록 신청을 받고 있어요</h2><p>아래 버튼으로 업체 이름, 사업자등록번호, 연락받을 휴대폰 번호를 보내 주시면 확인 후 연락드려요. 신청은 무료예요.</p>
+<section class="card"><h2>지금은 등록 신청을 받고 있어요</h2><p>업체 이름, 사업자등록번호, 연락받을 휴대폰 번호를 적어 신청해 주세요. 확인 후 연락드려요. 신청은 무료예요.</p>
 <div id="join-mail"{' hidden' if CFG.get('supabase_url') else ''}><a class="btn dark" href="{E(mail_link('내시간에 사장님 등록 신청'))}">이메일로 등록 신청하기</a><p class="muted">받는 곳: {em}</p></div>
 <form id="join" class="form" hidden>
 <label class="fld"><span>업체 이름</span><input name="biz_name" required maxlength="60"></label>
@@ -610,10 +610,10 @@ def static_pages():
 <label class="fld"><span>대표자 이름</span><input name="owner_name" maxlength="30"></label>
 <label class="fld"><span>요청 알림 받을 휴대폰</span><input name="mobile" required type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
 <label class="fld"><span>손님에게 보일 업체 전화 (선택)</span><input name="public_phone" type="tel" placeholder="032-000-0000"></label>
-<label class="fld"><span>업종</span><select name="trade" required>{''.join(f'<option>{E(t)}</option>' for t in ['자동차 정비'] + [G['name'] for G in GUIDES.values()])}</select></label>
+<label class="fld"><span>업종</span><select name="trade" required>{''.join(f'<option>{E(t)}</option>' for t in ['자동차 정비'] + [G['name'] for G in GUIDES.values()] + [M['name'] for M in FOOD.values()] + [gm['name'] for sec, S in DIRM.items() if S['kind'] == 'pro' for gm in S['groups'].values()])}</select></label>
 <label class="fld"><span>지역</span><select name="region" required>{''.join(f'<option>{E(r)}</option>' for r in sorted(RELEASED))}</select></label>
 <label class="fld"><span>업체 주소</span><input name="address" maxlength="120"></label>
-<label class="fld"><span>대표 가격대 (선택)</span><input name="price_note" maxlength="100" placeholder="예: 엔진오일 5만~7만 원(공임 포함)"></label>
+<label class="fld"><span>대표 가격대 (선택)</span><input name="price_note" maxlength="100" placeholder="예: 엔진오일 5~7만 원"></label>
 <label class="agree"><input type="checkbox" name="sms_consent" required><span>손님 예약 요청 알림 문자를 받는 데 동의해요. 언제든 그만 받을 수 있어요.</span></label>
 <p id="join-msg" class="err" aria-live="polite"></p>
 <button type="submit" class="btn blue wide">무료 등록 신청하기</button></form></section>''', scripts=f'<script src="/flow.js?v={V("flow.js")}" defer></script>')
