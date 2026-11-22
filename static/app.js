@@ -44,14 +44,22 @@
     if(!(window.NSG&&NSG.kakao)){fallback();note.hidden=false;note.textContent='네이버 검색에서 '+name+' 전화번호를 확인하세요.';return}
     b.disabled=true;b.textContent='번호 찾는 중…';
     loadKakao().then(function(){
-      var ps=new kakao.maps.services.Places(),opt={};
-      if(b.dataset.lat){opt.location=new kakao.maps.LatLng(+b.dataset.lat,+b.dataset.lng);opt.radius=300;opt.sort=kakao.maps.services.SortBy.DISTANCE}
-      ps.keywordSearch(name,function(res,st){
-        var hit=(st===kakao.maps.services.Status.OK)&&res.filter(function(r){return r.phone})[0];
-        if(hit){var tel='tel:'+hit.phone.replace(/[^0-9]/g,''),a=document.createElement('a');a.className='btn dark call';a.href=tel;a.innerHTML='<span aria-hidden="true">☎</span> 바로 전화 <small>'+hit.phone+'</small>';b.replaceWith(a);
-          note.hidden=false;note.textContent='카카오 지도에 등록된 번호로 연결해요.';location.href=tel;}
-        else{b.disabled=false;b.textContent='네이버에서 번호 찾기';b.onclick=function(e){e.stopImmediatePropagation();fallback()};note.hidden=false;note.textContent='등록된 번호를 못 찾았어요.';}
-      },opt);
+      var S=kakao.maps.services,ps=new S.Places();
+      function q(kw,rad){return new Promise(function(res){var o={radius:rad,sort:S.SortBy.DISTANCE};if(b.dataset.lat)o.location=new kakao.maps.LatLng(+b.dataset.lat,+b.dataset.lng);ps.keywordSearch(kw,function(d,st){res(st===S.Status.OK?d.filter(function(x){return x.phone}):[])},o)})}
+      function clean(n){return n.replace(/\(주\)|㈜|주식회사|\(합\)|\(1급\)/g,'').replace(/\([^)]*\)/g,' ').replace(/\s+/g,' ').trim()}
+      function done(hit,sure){
+        if(!hit){b.disabled=false;b.innerHTML='<span aria-hidden="true">☎</span> 네이버에서 번호 찾기';b.onclick=function(e){e.stopImmediatePropagation();fallback()};note.hidden=false;note.textContent='등록된 번호를 못 찾았어요.';return}
+        var tel='tel:'+hit.phone.replace(/[^0-9]/g,''),a=document.createElement('a');a.className='btn dark call';a.href=tel;a.innerHTML='<span aria-hidden="true">☎</span> 바로 전화 <small>'+hit.phone+'</small>';b.replaceWith(a);note.hidden=false;
+        if(sure){note.textContent='카카오 지도에 등록된 번호로 연결해요.';location.href=tel}
+        else note.textContent='같은 자리의 \''+hit.place_name+'\' 번호예요. 맞으면 눌러서 전화하세요.';
+      }
+      (async function(){
+        var r=await q(name,300);if(r.length)return done(r[0],true);
+        r=await q(clean(name),500);if(r.length)return done(r[0],true);
+        var kws=['자동차정비','카센터','공업사','타이어'];
+        for(var i=0;i<kws.length;i++){r=(await q(kws[i],40)).filter(function(x){return +x.distance<=40&&/자동차/.test(x.category_name)});if(r.length)return done(r[0],false)}
+        done(null);
+      })();
     },function(){fallback()});
   })});
   // ---- 지도 (누를 때 불러오기)
