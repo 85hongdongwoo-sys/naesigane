@@ -146,3 +146,8 @@ main{max-width:720px;margin:0 auto;padding:0 16px 24px}
 .stars button.on{color:#FFB020}
 .seg.three{margin-top:0}
 .form .fld{margin-top:12px}
+.shop.member{border:2px solid #1B64DA;margin-bottom:10px}
+.actions.two-btn{grid-template-columns:1fr 1fr}
+.star{color:#E08A00}
+.quote{margin:8px 0 0;padding:8px 10px;border-radius:10px;background:#F9FAFB;font-size:14px}
+#members{margin-bottom:14px}

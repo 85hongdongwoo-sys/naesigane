@@ -163,3 +163,16 @@ $$;
 
 revoke all on function apply_owner, create_request, get_reply, answer_reply, get_request, choose_owner, write_review, owner_reviews from public;
 grant execute on function apply_owner(jsonb), create_request(jsonb), get_reply(text), answer_reply(text, jsonb), get_request(text), choose_owner(text, uuid), write_review(text, jsonb), owner_reviews(uuid) to anon;
+
+-- 9) 지역·업종의 가입(승인) 업체와 별점 (목록 페이지 위쪽에 보여 줘요)
+create or replace function region_owners(reg text, tr text) returns jsonb language sql security definer set search_path = public as $$
+  select coalesce(jsonb_agg(x order by x->>'stars' desc nulls last),'[]'::jsonb) from (
+    select jsonb_build_object('id',o.id,'name',o.biz_name,'phone',o.public_phone,'address',o.address,'price',o.price_note,
+      'stars',(select round(avg(stars)::numeric,1) from reviews where owner_id=o.id),
+      'reviews',(select count(*) from reviews where owner_id=o.id),
+      'answered',(select count(*) from replies where owner_id=o.id and answered_at > now() - interval '30 days'),
+      'last',(select body from reviews where owner_id=o.id and body <> '' order by created_at desc limit 1)) x
+    from owners o where o.approved and o.region = reg and o.trade = tr) s;
+$$;
+revoke all on function region_owners from public;
+grant execute on function region_owners(text, text) to anon;

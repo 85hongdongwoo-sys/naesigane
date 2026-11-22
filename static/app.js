@@ -68,6 +68,15 @@
       if(b.length)m.fitBounds(b,{padding:[20,20]});
     };document.head.appendChild(css);
   })}
+  // ---- 예약 답변 업체 (가입 업체)
+  var mem=$('#members');
+  if(mem&&window.NSG&&NSG.api){NSG.call('region_owners',{reg:mem.dataset.region,tr:mem.dataset.trade}).then(function(L){
+    if(!L||!L.length)return;function e(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+    mem.hidden=false;mem.innerHTML='<h2 class="list-title">예약 답변 업체 <span class="muted">'+L.length+'곳</span></h2>'+L.map(function(o){
+      return '<article class="shop member"><div class="shop-head"><h3>'+e(o.name)+'</h3><span class="tag ok">예약 답변 업체</span></div>'+
+      '<p class="addr">'+(o.stars?'<b class="star">★ '+o.stars+'</b> · 업체 후기 '+o.reviews+'건':'아직 후기 없음')+(o.answered?' · 최근 30일 답변 '+o.answered+'건':'')+'</p>'+
+      (o.price?'<p class="addr">'+e(o.price)+'</p>':'')+(o.last?'<p class="quote">“'+e(o.last)+'”</p>':'')+
+      '<div class="actions two-btn">'+(o.phone?'<a class="btn dark" href="tel:'+e(o.phone.replace(/[^0-9]/g,''))+'">☎ 바로 전화</a>':'')+'<a class="btn blue" href="/요청/?t='+encodeURIComponent(mem.dataset.trade)+'&r='+encodeURIComponent(mem.dataset.region)+'">예약 요청</a></div></article>'}).join('')})}
   // ---- 첫 화면 지역 찾기
   var data=$('#regions'),q=$('#q'),out=$('#results');
   if(data&&q){var R=JSON.parse(data.textContent);

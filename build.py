@@ -304,6 +304,7 @@ def region_page(region, shops, all_regions, region_centers):
 {stat}
 <section class="card facts"><h2>{E(gu)} 정비소 한눈에</h2><ul>{''.join(f'<li>{f}</li>' for f in facts)}</ul></section>
 <section class="list-wrap">
+<div id="members" data-region="{E(region)}" data-trade="자동차 정비" hidden></div>
 <h2 class="list-title">{E(gu)} 정비소 목록</h2>
 <div class="filters" role="group" aria-label="정비소 거르기">{''.join(filters)}</div>
 <div id="map" class="map" role="img" aria-label="{E(gu)} 정비소 위치 지도" data-pts='{json.dumps(pts)}'><button type="button" class="btn ghost map-load">지도에서 위치 보기</button></div>
