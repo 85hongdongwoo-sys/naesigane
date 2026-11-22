@@ -417,7 +417,7 @@ def static_pages():
 <label class="fld"><span>대표자 이름</span><input name="owner_name" maxlength="30"></label>
 <label class="fld"><span>요청 알림 받을 휴대폰</span><input name="mobile" required type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
 <label class="fld"><span>손님에게 보일 업체 전화 (선택)</span><input name="public_phone" type="tel" placeholder="032-000-0000"></label>
-<label class="fld"><span>업종</span><select name="trade" required>{''.join(f'<option>{E(t)}</option>' for t in ['자동차 정비','하수구 막힘','보일러 고장','수도 동파','누수','열쇠·도어락'])}</select></label>
+<label class="fld"><span>업종</span><select name="trade" required>{''.join(f'<option>{E(t)}</option>' for t in ['자동차 정비','하수구 막힘','보일러 고장','수도 동파','누수','열쇠·도어락','정전·전기 고장','유리·창문 파손','정화조 청소','방역·해충'])}</select></label>
 <label class="fld"><span>지역</span><select name="region" required>{''.join(f'<option>{E(r)}</option>' for r in sorted(RELEASED))}</select></label>
 <label class="fld"><span>업체 주소</span><input name="address" maxlength="120"></label>
 <label class="fld"><span>대표 가격대 (선택)</span><input name="price_note" maxlength="100" placeholder="예: 엔진오일 5만~7만 원(공임 포함)"></label>
@@ -487,9 +487,9 @@ def home(regions_count, region_centers, guides):
     live = {'자동차 정비': url_path('자동차정비')}
     for kind, g in guides:
         live.setdefault(GUIDES[kind]['tile'], url_path('안내', kind) if CFG.get('guides_all') else g)
-    order = ['보일러 고장', '수도 동파', '하수구 막힘', '누수 탐지', '열쇠·도어락', '자동차 정비']
+    order = ['보일러 고장', '수도 동파', '하수구 막힘', '누수 탐지', '열쇠·도어락', '정전·전기 고장', '유리·창문 파손', '정화조 청소', '방역·해충', '자동차 정비']
     hot = [t for t in order if t in live]
-    icons = {'보일러 고장': '♨', '수도 동파': '❄', '하수구 막힘': '⤓', '누수 탐지': '💧', '열쇠·도어락': '🔑', '자동차 정비': '🚗'}
+    icons = {'보일러 고장': '♨', '수도 동파': '❄', '하수구 막힘': '⤓', '누수 탐지': '💧', '열쇠·도어락': '🔑', '정전·전기 고장': '⚡', '유리·창문 파손': '🪟', '정화조 청소': '🚽', '방역·해충': '🐜', '자동차 정비': '🚗'}
     hot_html = ''.join(f'<a class="hot" href="{E(live[t])}"><span class="ic" aria-hidden="true">{icons.get(t, "•")}</span><b>{E(t)}</b></a>' for t in hot)
     chips = ''.join(f'<button type="button" class="qchip" data-q="{E(t.split("·")[0].split()[0])}">{E(t)}</button>' for t in hot)
     groups = [
