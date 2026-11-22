@@ -14,6 +14,9 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(ROOT, '_site')
 CFG = json.load(open(os.path.join(ROOT, 'config.json'), encoding='utf-8'))
 RELEASED = []  # main()에서 채움: 공개된 지역 전체
+import hashlib
+def V(name):  # 정적 파일 캐시 갱신용 버전
+    return hashlib.md5(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', name), 'rb').read()).hexdigest()[:8]
 TODAY = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).date()  # 한국 날짜
 BASE = CFG['base_url'].rstrip('/')
 E = html.escape
@@ -179,7 +182,7 @@ def page(title, desc, path, body, crumbs=None, jsonld=None, extra_head='', noind
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="/s.css">
+<link rel="stylesheet" href="/s.css?v={V('s.css')}">
 {extra_head}{ld}</head>
 <body>
 <header class="top"><a class="brand" href="/"><img class="logo" src="/favicon.svg" alt="" width="28" height="28"><b>내시간에</b></a><a class="top-owner" href="{E(url_path('사장님'))}">사장님이세요?</a></header>
@@ -194,7 +197,7 @@ def page(title, desc, path, body, crumbs=None, jsonld=None, extra_head='', noind
 </footer>
 <script>window.NSG={{kakao:{json.dumps(CFG.get('kakao_js_key') or '')},api:{json.dumps(CFG.get('supabase_url') or '')},key:{json.dumps(CFG.get('supabase_anon_key') or '')},regions:{json.dumps(sorted(RELEASED) if path.startswith(url_path('요청')) else [], ensure_ascii=False)},sms:{'true' if CFG.get('sms_enabled') else 'false'}}};
 window.NSG.call=function(fn,args){{return fetch(NSG.api+'/rest/v1/rpc/'+fn,{{method:'POST',headers:{{'apikey':NSG.key,'Authorization':'Bearer '+NSG.key,'Content-Type':'application/json'}},body:JSON.stringify(args)}}).then(function(r){{return r.json().then(function(j){{if(!r.ok)throw new Error((j&&j.message)||'잠시 뒤 다시 해 주세요');return j}})}})}};</script>
-<script src="/app.js" defer></script>
+<script src="/app.js?v={V('app.js')}" defer></script>
 {scripts}
 </body>
 </html>
@@ -449,7 +452,7 @@ def static_pages():
 <label class="fld"><span>대표 가격대 (선택)</span><input name="price_note" maxlength="100" placeholder="예: 엔진오일 5만~7만 원(공임 포함)"></label>
 <label class="agree"><input type="checkbox" name="sms_consent" required><span>손님 예약 요청 알림 문자를 받는 데 동의해요. 언제든 그만 받을 수 있어요.</span></label>
 <p id="join-msg" class="err" aria-live="polite"></p>
-<button type="submit" class="btn blue wide">무료 등록 신청하기</button></form></section>''', scripts='<script src="/flow.js" defer></script>')
+<button type="submit" class="btn blue wide">무료 등록 신청하기</button></form></section>''', scripts=f'<script src="/flow.js?v={V("flow.js")}" defer></script>')
     p = url_path('정보-수정-삭제-요청')
     pages[p] = page('업체 정보 수정·삭제 요청 | 내시간에', '내시간에에 실린 업체 정보의 수정이나 삭제를 요청하는 방법이에요.', p, f'''<section class="hero"><h1>업체 정보 수정·삭제 요청</h1>
 <p class="lead">내시간에의 업체 정보는 공공데이터(국토교통부 표준데이터 등)를 바탕으로 해요. 정보가 틀렸거나, 사장님이 정보 게시를 원하지 않으시면 알려 주세요.</p></section>
@@ -464,11 +467,11 @@ def static_pages():
 <section class="card"><h2>4. 문의</h2><p>개인정보 관련 문의: {em}</p></section>''')
     p = url_path('요청')
     pages[p] = page('원하는 시간에 예약 요청 (미리 보기) | 내시간에', '원하는 날짜·시간·예산을 정해 동네 업체에 한 번에 요청하는 화면 미리 보기예요.', p,
-        '<div id="req" aria-live="polite"><noscript>이 화면은 자바스크립트가 필요해요.</noscript></div>', noindex=True, scripts='<script src="/req.js" defer></script>')
+        '<div id="req" aria-live="polite"><noscript>이 화면은 자바스크립트가 필요해요.</noscript></div>', noindex=True, scripts=f'<script src="/req.js?v={V("req.js")}" defer></script>')
     p = url_path('내-요청')
-    pages[p] = page('내 요청 | 내시간에', '내 예약 요청과 업체 답변', p, '<div id="my" aria-live="polite"></div>', noindex=True, scripts='<script src="/flow.js" defer></script>')
+    pages[p] = page('내 요청 | 내시간에', '내 예약 요청과 업체 답변', p, '<div id="my" aria-live="polite"></div>', noindex=True, scripts=f'<script src="/flow.js?v={V("flow.js")}" defer></script>')
     p = url_path('답변')
-    pages[p] = page('손님 요청에 답하기 | 내시간에', '사장님 답변 화면', p, '<div id="reply" aria-live="polite"></div>', noindex=True, scripts='<script src="/flow.js" defer></script>')
+    pages[p] = page('손님 요청에 답하기 | 내시간에', '사장님 답변 화면', p, '<div id="reply" aria-live="polite"></div>', noindex=True, scripts=f'<script src="/flow.js?v={V("flow.js")}" defer></script>')
     p = url_path('소개')
     pages[p] = page('내시간에 소개 | 원하는 시간에 맞춰 답하는 동네 업체', '손님이 원하는 시간을 먼저 정하면 동네 업체가 맞춰 답하는 서비스, 내시간에를 소개해요.', p, f'''<section class="hero"><h1>돈 내는 손님이<br>시간을 먼저 정해요</h1><p class="lead">내시간에는 동네 업체를 찾고, 원하는 시간에 맞춰 예약할 수 있게 돕는 서비스예요.</p></section>
 <section class="card"><h2>지금 할 수 있는 것</h2><ul class="plain"><li>지역별 자동차 정비소 목록, 전화번호, 위치, 정비 종류 보기</li><li>번호를 눌러 바로 전화하기</li><li>막힘·누수처럼 급한 일에 먼저 해 볼 것 안내</li></ul></section>
