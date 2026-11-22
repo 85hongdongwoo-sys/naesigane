@@ -351,6 +351,18 @@ def region_page(region, shops, all_regions, region_centers):
 
 GUIDES = json.load(open(os.path.join(ROOT, 'data', 'guides.json'), encoding='utf-8'))
 
+GROUPS = [
+    ('급한 출장 수리', ['보일러-고장', '수도-동파', '하수구-막힘', '누수-탐지', '열쇠-도어락', '전기-고장', '유리-파손']),
+    ('집 수리', ['에어컨-고장', '수전-교체', '방수', '정화조-청소']),
+    ('청소·정리·방역', ['입주청소', '줄눈-탄성코트', '유품정리', '방역-해충', '비둘기-벌집']),
+    ('상가·업소', ['사다리차', '셔터-자동문', '업소용-냉장고', '간판-수리', '팝업-인테리어']),
+]
+def group_of(kind):
+    for n, ks in GROUPS:
+        if kind in ks:
+            return n, ks
+    return '다른 업종', list(GUIDES)
+
 def guide_page(kind, region, ctx=None):
     G = GUIDES[kind]
     gu = gu_name(region)
@@ -378,7 +390,9 @@ def guide_page(kind, region, ctx=None):
     extra = ''.join(f'<section class="card"><h2>{E(fill(h))}</h2><p>{fill(b)}</p></section>' for h, b in G.get('sections', []))
     ask = ''.join(f'<li>{E(a)}</li>' for a in G.get('ask', []))
     faqs = [(fill(q), fill(a)) for q, a in G['faqs']]
-    others = ''.join(f'<a href="{E(url_path("안내", k, region.replace(" ", "-")))}">{E(gu)} {E(GUIDES[k]["name"])}</a>' for k in GUIDES if k != kind)
+    gname, gkinds = group_of(kind)
+    others = ''.join(f'<a href="{E(url_path("안내", k, region.replace(" ", "-")))}">{E(gu)} {E(GUIDES[k]["name"])}</a>' for k in gkinds if k != kind and k in GUIDES)
+    rest = ''.join(f'<a href="{E(url_path("안내", k, region.replace(" ", "-")))}">{E(GUIDES[k]["name"])}</a>' for k in GUIDES if k not in gkinds)
     body = f'''<section class="hero"><h1>{E(gu)} {E(G['name'])},<br>{E(G['h1_tail'])}</h1>
 <p class="lead">{E(fill(G['lead']))}</p></section>
 {warn}
@@ -390,7 +404,8 @@ def guide_page(kind, region, ctx=None):
 {local}
 {apt_section(kind, gu, ctx.get('apts'), ctx.get('apt_date', ''))}
 {faq_html(faqs)}
-<section class="card"><h2>{E(gu)}의 다른 급한 일</h2><div class="links">{others}</div>{car}</section>
+<section class="card"><h2>{E(gu)} {E(gname)}</h2><div class="links">{others}</div>{car}</section>
+<section class="card"><h2>{E(gu)} 다른 업종</h2><div class="links">{rest}</div></section>
 {near_html}
 {owner_cta(gu + ' ' + G['name'])}
 <p class="source">이 안내는 일반적인 정보예요. 집 상태에 따라 방법과 비용이 달라질 수 있어요. 위험하다고 느껴지면 혼자 하지 말고 전문가를 부르세요.</p>'''
@@ -418,7 +433,7 @@ def static_pages():
 <label class="fld"><span>대표자 이름</span><input name="owner_name" maxlength="30"></label>
 <label class="fld"><span>요청 알림 받을 휴대폰</span><input name="mobile" required type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
 <label class="fld"><span>손님에게 보일 업체 전화 (선택)</span><input name="public_phone" type="tel" placeholder="032-000-0000"></label>
-<label class="fld"><span>업종</span><select name="trade" required>{''.join(f'<option>{E(t)}</option>' for t in ['자동차 정비','하수구 막힘','보일러 고장','수도 동파','누수','열쇠·도어락','정전·전기 고장','유리·창문 파손','정화조 청소','방역·해충'])}</select></label>
+<label class="fld"><span>업종</span><select name="trade" required>{''.join(f'<option>{E(t)}</option>' for t in ['자동차 정비'] + [G['name'] for G in GUIDES.values()])}</select></label>
 <label class="fld"><span>지역</span><select name="region" required>{''.join(f'<option>{E(r)}</option>' for r in sorted(RELEASED))}</select></label>
 <label class="fld"><span>업체 주소</span><input name="address" maxlength="120"></label>
 <label class="fld"><span>대표 가격대 (선택)</span><input name="price_note" maxlength="100" placeholder="예: 엔진오일 5만~7만 원(공임 포함)"></label>
@@ -488,7 +503,7 @@ def home(regions_count, region_centers, guides):
     live = {'자동차 정비': url_path('자동차정비')}
     for kind, g in guides:
         live.setdefault(GUIDES[kind]['tile'], url_path('안내', kind) if CFG.get('guides_all') else g)
-    order = ['보일러 고장', '수도 동파', '하수구 막힘', '누수 탐지', '열쇠·도어락', '정전·전기 고장', '유리·창문 파손', '정화조 청소', '방역·해충', '자동차 정비']
+    order = [GUIDES[k]['tile'] for k in GROUPS[0][1] if k in GUIDES] + ['자동차 정비']
     hot = [t for t in order if t in live]
     icons = {'보일러 고장': '♨', '수도 동파': '❄', '하수구 막힘': '⤓', '누수 탐지': '💧', '열쇠·도어락': '🔑', '정전·전기 고장': '⚡', '유리·창문 파손': '🪟', '정화조 청소': '🚽', '방역·해충': '🐜', '자동차 정비': '🚗'}
     hot_html = ''.join(f'<a class="hot" href="{E(live[t])}"><span class="ic" aria-hidden="true">{icons.get(t, "•")}</span><b>{E(t)}</b></a>' for t in hot)
@@ -498,7 +513,9 @@ def home(regions_count, region_centers, guides):
         ('청소·정리·방역', ['입주·이사청소', '줄눈·탄성코트', '유품정리·특수청소', '방역·해충', '비둘기·벌집']),
         ('상가·업소', ['사다리차', '셔터·자동문 수리', '업소용 냉장고', '간판 수리', '팝업 인테리어']),
     ]
-    soon = ''.join(f'<p class="soon-row"><b>{E(n)}</b> {" · ".join(E(i) for i in items if i not in live)}</p>' for n, items in groups)
+    soon = ''.join(f'<p class="soon-row"><b>{E(n)}</b> {" · ".join(E(i) for i in items if i not in live)}</p>' for n, items in groups if any(i not in live for i in items))
+    more = ''.join(f'<h3 class="sub">{E(n)}</h3><div class="links">' + ''.join(f'<a href="{E(live[GUIDES[k]["tile"]])}">{E(GUIDES[k]["tile"])}</a>' for k in ks if k in GUIDES and GUIDES[k]['tile'] in live) + '</div>'
+                   for n, ks in GROUPS[1:])
     if len(regions_count) <= 12:
         open_regions = ''.join(f'<a href="{E(url_path("자동차정비", slug_region(r)))}">{E(short_region(r))}</a>' for r in regions_count)
     else:
@@ -512,7 +529,8 @@ def home(regions_count, region_centers, guides):
 <section class="card"><h2>지금 바로 찾을 수 있어요</h2><div class="hots">{hot_html}</div></section>
 <section class="card req-cta"><h2>원하는 시간을 먼저 정하세요</h2><p>날짜·시간·예산을 정해 요청하면, 동네 업체 사장님이 가능한 시간과 가격으로 답해요.</p><a class="btn blue wide" href="{E(url_path('요청'))}">시간 정해 예약 요청하기</a></section>
 <section class="card"><h2>열린 동네</h2><div class="links">{open_regions}</div><p class="muted">동네와 업종은 차례로 늘어나요.</p></section>
-<section class="card"><h2>곧 열려요</h2>{soon}</section>
+<section class="card"><h2>집 수리·청소·상가 업종</h2>{more}</section>
+{f'<section class="card"><h2>곧 열려요</h2>{soon}</section>' if soon else ''}
 {owner_cta('동네 업체')}
 <script type="application/json" id="regions" data-src="/search.json">[]</script>'''
     open(os.path.join(OUT, 'search.json'), 'w', encoding='utf-8').write(json.dumps(idx, ensure_ascii=False, separators=(',', ':')))
@@ -553,11 +571,23 @@ def apt_section(kind, gu, apts, apt_date):
             p.append(f'{E(gu)} 아파트 {n}곳 중 <b>복도식 단지가 {len(corridor)}곳</b>이에요({ex(corridor)} 등). 복도식은 계량기가 바깥 복도에 있어서 한파 때 특히 잘 얼어요. 한파 예보가 나오면 계량기 함부터 보온하세요.')
         else:
             p.append(f'{E(gu)} 아파트 {n}곳은 대부분 계단식이라 계량기가 집 안쪽이나 계단실에 있는 편이에요. 그래도 오래 집을 비울 땐 물을 가늘게 틀어 두세요.')
-    elif kind in ('누수-탐지', '하수구-막힘', '전기-고장', '유리-파손'):
+    elif kind in ('입주청소', '줄눈-탄성코트'):
+        new = [a for a in apts if a[2] and yr - a[2] <= 2]
+        if new:
+            p.append(f'{E(gu)}에는 최근 2년 안에 입주를 시작한 단지가 <b>{len(new)}곳</b> 있어요({ex(new, 5)} 등). 새 단지는 입주 기간에 청소·시공 업체 출입을 관리사무소에 미리 신청해야 하는 경우가 많아요.')
+        else:
+            p.append(f'{E(gu)} 아파트 {n}곳 중 최근 2년 안에 입주를 시작한 단지는 없어요. 이사청소라면 오래 산 집의 기름때·물때 제거를 중심으로 범위를 정하세요.')
+    elif kind == '사다리차':
+        p.append(f'{E(gu)}에는 관리사무소가 있는 아파트 단지가 {n}곳 있어요. {ex(apts)} 같은 큰 단지는 이사 날짜와 사다리차 작업을 관리사무소에 미리 알려야 하는 경우가 많아요.')
+    elif kind == '비둘기-벌집':
+        p.append(f'{E(gu)} 아파트 {n}곳에 사신다면, 단지 전체에 비둘기가 많을 땐 관리사무소에 단지 차원의 퇴치를 요청하고, 우리 집 실외기·베란다만 업체에 맡기면 돼요.')
+    elif kind in ('누수-탐지', '하수구-막힘', '전기-고장', '유리-파손', '수전-교체', '방수'):
         what = {'누수-탐지': '배관이 낡아 물이 새기 쉬워요. 아래층으로 물이 샌다면 관리사무소에 먼저 알리세요',
                 '하수구-막힘': '공용 배수관이 막히는 일이 잦아요. 여러 집이 같이 막혔다면 관리사무소에 먼저 알리세요',
                 '전기-고장': '배선과 차단기 용량이 요즘 가전에 비해 작을 수 있어요. 차단기가 자주 내려가면 점검을 받아 보세요',
-                '유리-파손': '창틀이 낡아 유리만 바꾸기 어려운 경우도 있어요. 창틀 상태도 함께 봐 달라고 하세요'}[kind]
+                '유리-파손': '창틀이 낡아 유리만 바꾸기 어려운 경우도 있어요. 창틀 상태도 함께 봐 달라고 하세요',
+                '수전-교체': '배관과 밸브가 낡아 잠가도 물이 새는 경우가 있어요. 밸브가 안 잠기면 관리사무소에 세대 밸브 위치를 물어보세요',
+                '방수': '옥상·외벽 방수가 낡았을 수 있어요. 아파트 옥상·외벽은 공용 부분이라 관리사무소에 먼저 알리세요'}[kind]
         if old:
             p.append(f'{E(gu)} 아파트 {n}곳 중 <b>{len(old)}곳이 지은 지 30년 넘은 단지</b>예요({ex(sorted(old, key=lambda a: a[2]))} 등). 오래된 단지는 {what}.')
         else:
