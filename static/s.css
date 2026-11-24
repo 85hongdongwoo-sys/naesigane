@@ -235,3 +235,8 @@ h3.sub{color:var(--sub);font-weight:600;font-size:13px;text-transform:none;margi
 .kview .kv-map{width:100%;aspect-ratio:4/3;max-height:420px;border-radius:14px;overflow:hidden;margin-top:8px}
 .kview .kv-rv{width:100%;aspect-ratio:16/10;max-height:380px;border-radius:14px;overflow:hidden;margin-top:10px}
 .kmk{border:0;cursor:pointer;padding:0}
+.work .work-figs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:6px 0 8px}
+.work figure{margin:0;border-radius:14px;overflow:hidden;background:#F1F3F5}
+.work img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}
+.work figcaption{font-size:13.5px;line-height:1.55;padding:8px 12px 10px;color:inherit;word-break:keep-all;overflow-wrap:anywhere}
+@media(max-width:600px){.work .work-figs{grid-template-columns:1fr}}

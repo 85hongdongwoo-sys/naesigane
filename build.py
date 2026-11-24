@@ -491,6 +491,7 @@ def region_page(region, shops, all_regions, region_centers):
 <section class="card soon"><h2>원하는 시간에 맞춰 예약하는 기능, 준비 중이에요</h2><p>시간을 정해 요청하면 {E(gu)} 정비소 사장님이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. 사장님 가입이 시작되면 이 동네부터 열려요. <a href="{E(url_path('요청'))}?t={quote('자동차 정비')}&amp;r={quote(region)}">어떻게 요청하는지 미리 보기</a></p></section>
 {types_html}
 {view_section(gu, pts, region_centers.get(region), '정비소')}
+{photo_section('_car', '정비소에서는 이렇게 해요')}
 <section class="card"><h2>정비소 가기 전까지 이렇게 하세요</h2>
 <p>{E(gu)}에서 차가 갑자기 이상해졌을 때, 정비소에 맡기기 전까지 안전하게 버티는 방법이에요.</p>
 <ol class="steps"><li><b>빨간 경고등이면 바로 세우세요</b><span>엔진 온도, 엔진오일, 브레이크 경고등이 빨갛게 켜지면 안전한 곳에 차를 세우고 시동을 꺼요. 노란 경고등은 천천히 정비소까지 가도 되는 경우가 많지만 사진은 찍어 두세요.</span></li>
@@ -622,6 +623,16 @@ def dong_section(trade, gu, dongs, apts):
              f'같은 {E(gu)} 안이라도 업체 위치에서 먼 동네는 출장비가 더 붙을 수 있으니 {E(trade)} 업체를 고를 때 가까운 곳을 먼저 보세요.')
     return f'<section class="card"><h2>{E(gu)} 동네별로 보면</h2><p>{" ".join(p)}</p>{items}</section>'
 
+WORK_PHOTOS = json.load(open(os.path.join(ROOT, 'data', 'work_photos.json'), encoding='utf-8'))
+
+def photo_section(key, title):
+    w = WORK_PHOTOS.get(key)
+    if not w or not os.path.exists(os.path.join(ROOT, 'static', 'img', f'{w[0]}-1.webp')):
+        return ''
+    figs = ''.join(f'<figure><img src="/img/{w[0]}-{i}.webp" width="1200" height="675" alt="{E(w[i])}" loading="lazy" decoding="async">'
+                   f'<figcaption>{E(w[i])}</figcaption></figure>' for i in (1, 2))
+    return f'<section class="card work"><h2>{E(title)}</h2><div class="work-figs">{figs}</div><p class="muted">사진은 이해를 돕는 예시예요. 실제 업체와 다를 수 있어요.</p></section>'
+
 def guide_page(kind, region, ctx=None):
     G = GUIDES[kind]
     gu = gu_name(region)
@@ -680,6 +691,7 @@ def guide_page(kind, region, ctx=None):
 {warn}
 {live}
 {view_section(gu, [(r[3], r[4], i + 1) for i, r in enumerate(stores[:60]) if len(r) > 4], ctx.get('center'))}
+{photo_section(kind, G['name'] + ' 현장은 이렇게 해요')}
 <section class="card"><h2>{E(G['steps_title'])}</h2><ol class="steps">{steps}</ol></section>
 {wait_section(kind, gu, near)}
 <section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul></section>
