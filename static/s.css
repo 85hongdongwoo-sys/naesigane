@@ -252,12 +252,17 @@ h3.sub{color:var(--sub);font-weight:600;font-size:13px;text-transform:none;margi
 .spot-map{position:absolute;inset:0}
 .spot-wait{padding:16px}
 .spot-dot{display:block;width:10px;height:10px;border-radius:50%;background:#1B64DA;border:2px solid #fff;box-shadow:0 0 0 1px rgba(27,100,218,.35)}
-/* 아파트 지은 연도 세로 막대 */
-.dchart{margin:14px 0 6px}
-.dc-plot{display:flex;align-items:flex-end;gap:6px;height:170px;padding:0 2px;border-bottom:1px solid #D1D6DB}
-.dc-col{flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative;padding-bottom:22px}
-.dc-bar{display:block;width:70%;max-width:44px;min-height:2px;background:#90B4EC;border-radius:6px 6px 0 0}
-.dc-col.old .dc-bar{background:#1B64DA}
-.dc-n{font-size:13px;color:#4E5968;margin-bottom:4px}
-.dc-x{position:absolute;bottom:0;font-size:12px;color:#6B7684;white-space:nowrap}
+/* 아파트 지은 연도 세로 막대 (우리 지역 vs 전국) */
+.dchart{margin:10px 0 6px}
+.dc-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:#4E5968;margin-bottom:8px}
+.dc-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.dc-legend i.me{background:#1B64DA}.dc-legend i.nat{background:#C9CFD6}
+.dc-plot{display:flex;align-items:flex-end;gap:6px;height:180px;border-bottom:1px solid #D1D6DB}
+.dc-col{flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;position:relative;padding-bottom:22px}
+.dc-pair{display:flex;align-items:flex-end;justify-content:center;gap:2px;height:100%}
+.dc-b{position:relative;display:block;width:42%;max-width:22px;min-height:2px;border-radius:4px 4px 0 0}
+.dc-b.me{background:#90B4EC}.dc-b.me.old{background:#1B64DA}.dc-b.nat{background:#C9CFD6}
+.dc-b i{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-style:normal;font-size:11px;color:#4E5968;padding-bottom:2px;white-space:nowrap;letter-spacing:-.3px}
+.dc-x{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:12px;color:#6B7684;white-space:nowrap}
 .dchart figcaption{font-size:13px;color:#6B7684;margin-top:8px}
+@media (max-width:380px){.dc-b i{font-size:10px}.dc-plot{gap:3px}.dc-x{font-size:11px}}

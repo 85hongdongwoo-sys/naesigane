@@ -573,20 +573,33 @@ def age_section(kind, gu, apts):
     return (f'<section class="card"><h2>{E(gu)} 건물 나이로 보는 {E(GUIDES[kind]["name"])}</h2><p>{lead}</p>'
             f'{decade_chart(gu, ys)}<ul class="steps age">{li}</ul><p class="muted">{tail}</p></section>')
 
+NATIONAL_DECADES = {}
+NATIONAL_OLD = 0
+
 def decade_chart(gu, ys):
-    """아파트 지은 연도를 10년 단위 세로 막대로 보여 줘요 (지역마다 모양이 달라요)."""
+    """아파트 지은 연도를 10년 단위로, 우리 지역과 전국 평균을 나란히 세로 막대로 보여 줘요 (비율 %)."""
     if len(ys) < 3:
         return ''
-    c = Counter(min(max(y // 10 * 10, 1970), 2020) for y in ys)
     keys = list(range(1970, 2030, 10))
-    mx = max(c.values())
+    def dist(L):
+        c = Counter(min(max(y // 10 * 10, 1970), 2020) for y in L)
+        return {k: c.get(k, 0) / len(L) * 100 for k in keys}
+    me, nat = dist(ys), NATIONAL_DECADES
+    mx = max(max(me.values()), max(nat.values()))
     yr = TODAY.year
+    def lab(k):
+        return "~1979" if k == 1970 else "2020~" if k == 2020 else str(k)[2:] + "년대"
     cols = ''.join(
-        f'<div class="dc-col{" old" if yr - (k + 9) >= 30 else ""}"><span class="dc-n">{c.get(k, 0)}</span>'
-        f'<span class="dc-bar" style="height:{round(c.get(k, 0) / mx * 82)}%"></span>'
-        f'<span class="dc-x">{"~1979" if k == 1970 else (str(k) + "~") if k == 2020 else str(k)[2:] + "년대"}</span></div>' for k in keys)
-    return (f'<figure class="dchart" role="img" aria-label="{E(gu)} 아파트 지은 연도 분포">'
-            f'<div class="dc-plot">{cols}</div><figcaption>{E(gu)} 아파트 지은 연도 (단지 수) · 진한 막대는 지은 지 30년 넘은 단지예요</figcaption></figure>')
+        f'<div class="dc-col"><div class="dc-pair">'
+        f'<span class="dc-b me{" old" if yr - (k + 9) >= 30 else ""}" style="height:{round(me[k] / mx * 82)}%"><i>{round(me[k])}</i></span>'
+        f'<span class="dc-b nat" style="height:{round(nat[k] / mx * 82)}%"><i>{round(nat[k])}</i></span>'
+        f'</div><span class="dc-x">{lab(k)}</span></div>' for k in keys)
+    old_me = round(sum(1 for y in ys if yr - y >= 30) / len(ys) * 100)
+    cmp = '더 많아요' if old_me > NATIONAL_OLD + 3 else '더 적어요' if old_me < NATIONAL_OLD - 3 else '비슷해요'
+    return (f'<p>{E(gu)}은(는) 지은 지 30년 넘은 아파트가 <b>{old_me}%</b>로, 전국 평균 <b>{NATIONAL_OLD}%</b>보다 {cmp}.</p>'
+            f'<figure class="dchart" role="img" aria-label="{E(gu)}와 전국 평균의 아파트 지은 연도 비율">'
+            f'<div class="dc-legend"><span><i class="me"></i>{E(gu)}</span><span><i class="nat"></i>전국 평균</span></div>'
+            f'<div class="dc-plot">{cols}</div><figcaption>아파트 지은 연도별 단지 비율(%) · 진한 파랑은 지은 지 30년 넘은 단지예요</figcaption></figure>')
 
 def choose_section(trade, gu):
     where = f'{E(gu)}에서 ' if gu else ''
@@ -1068,6 +1081,11 @@ def main():
     sp = os.path.join(ROOT, 'data', 'stores.json')
     sdata = json.load(open(sp, encoding='utf-8')) if os.path.exists(sp) else {'kinds': {}}
     extra = sorted(r for r in apts if r not in released and r.split()[0] in SIDO_SHORT and re.search(r'[시군구]$', r) and len(r.split()) >= 2)
+    _all = [a[2] for L in apts.values() for a in L if a[2]]
+    if _all:
+        _c = Counter(min(max(y // 10 * 10, 1970), 2020) for y in _all)
+        NATIONAL_DECADES.update({d: _c.get(d, 0) / len(_all) * 100 for d in range(1970, 2030, 10)})
+        globals()['NATIONAL_OLD'] = round(sum(1 for y in _all if TODAY.year - y >= 30) / len(_all) * 100)
     gregs = (released + extra) if CFG.get('guides_all') else [g.split('/')[1].replace('-', ' ', 1) for g in CFG.get('released_guides', [])]
     gkinds = list(GUIDES) if CFG.get('guides_all') else list(dict.fromkeys(g.split('/')[0] for g in CFG.get('released_guides', [])))
     for reg in gregs:
