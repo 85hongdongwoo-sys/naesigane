@@ -240,3 +240,10 @@ h3.sub{color:var(--sub);font-weight:600;font-size:13px;text-transform:none;margi
 .work img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}
 .work figcaption{font-size:13.5px;line-height:1.55;padding:8px 12px 10px;color:inherit;word-break:keep-all;overflow-wrap:anywhere}
 @media(max-width:600px){.work .work-figs{grid-template-columns:1fr}}
+/* 생활 정보 글 표 */
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl table{width:100%;border-collapse:collapse;font-size:15px;min-width:0}
+.tbl th,.tbl td{padding:10px 12px;border-bottom:1px solid #E5E8EB;text-align:left;vertical-align:top;word-break:keep-all;overflow-wrap:anywhere}
+.tbl th{background:#F2F4F6;font-weight:600;white-space:nowrap}
+.src a{overflow-wrap:anywhere;word-break:break-all}
+.tbl td:first-child{white-space:nowrap}

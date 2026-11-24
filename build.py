@@ -194,7 +194,7 @@ def page(title, desc, path, body, crumbs=None, jsonld=None, extra_head='', noind
 </main>
 <footer class="foot">
 <p><b>내시간에</b> · 원하는 시간을 먼저 정하면, 동네 업체가 맞춰 답해 드려요.</p>
-<p><a href="{E(url_path('소개'))}">소개</a> · <a href="{E(url_path('정보-수정-삭제-요청'))}">정보 수정·삭제 요청</a> · <a href="{E(url_path('개인정보처리방침'))}">개인정보처리방침</a></p>
+<p><a href="{E(url_path('소개'))}">소개</a> · <a href="{E(url_path('정보'))}">생활 정보</a> · <a href="{E(url_path('정보-수정-삭제-요청'))}">정보 수정·삭제 요청</a> · <a href="{E(url_path('개인정보처리방침'))}">개인정보처리방침</a></p>
 <p class="muted">업체 정보는 공공데이터를 바탕으로 하며 실제와 다를 수 있어요.</p>
 </footer>
 <script>window.NSG={{kakao:{json.dumps(CFG.get('kakao_js_key') or '')},api:{json.dumps(CFG.get('supabase_url') or '')},key:{json.dumps(CFG.get('supabase_anon_key') or '')},regions:{json.dumps(sorted(RELEASED) if path.startswith(url_path('요청')) else [], ensure_ascii=False)},sms:{'true' if CFG.get('sms_enabled') else 'false'},reqLive:{'true' if CFG.get('requests_live') else 'false'}}};
@@ -692,6 +692,7 @@ def guide_page(kind, region, ctx=None):
 {live}
 {view_section(gu, [(r[3], r[4], i + 1) for i, r in enumerate(stores[:60]) if len(r) > 4], ctx.get('center'))}
 {photo_section(kind, G['name'] + ' 현장은 이렇게 해요')}
+{related_articles(kind)}
 <section class="card"><h2>{E(G['steps_title'])}</h2><ol class="steps">{steps}</ol></section>
 {wait_section(kind, gu, near)}
 <section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul></section>
@@ -709,7 +710,9 @@ def guide_page(kind, region, ctx=None):
 {owner_cta(gu + ' ' + G['name'])}
 <p class="source">이 안내는 일반적인 정보예요. 집 상태에 따라 방법과 비용이 달라질 수 있어요. 위험하다고 느껴지면 혼자 하지 말고 전문가를 부르세요.</p>'''
     crumbs = [('홈', '/'), (G['name'], url_path('안내', kind)), (f'{gu} {G["name"]}', path)]
-    return path, page(title, desc, path, body, crumbs, [faq_ld(faqs)])
+    # 동네 업체가 3곳 미만인 안내 페이지는 지역 이름만 다른 비슷한 글이 되기 쉬워서 검색에서 빼 둬요
+    thin = len(ctx.get('stores') or []) < 3
+    return path, page(title, desc, path, body, crumbs, [faq_ld(faqs)], noindex=thin)
 
 # ---------------------------------------------------------------- simple pages
 
@@ -787,11 +790,62 @@ def guide_index(kind, regions):
 <section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul></section>
 {f'<section class="card"><h2>건물 나이로 보는 {E(G["name"])}</h2><ul class="steps age">{age}</ul></section>' if age else ''}
 {choose_section(G['name'], '')}
+{related_articles(kind)}
 {f'<section class="card"><h2>업체에 전화할 때 꼭 물어볼 것</h2><ul class="plain">' + ''.join(f'<li>{E(a)}</li>' for a in G.get('ask', [])) + '</ul></section>' if G.get('ask') else ''}
 {faq_html([(q.replace('{gu}', '우리 동네').replace('{region}', '우리 지역'), a.replace('{gu}', '우리 동네').replace('{region}', '우리 지역')) for q, a in G['faqs']])}
 <section class="card"><h2>지역별 {E(G['name'])} 안내</h2><p class="muted">시·도를 찾아 우리 시·군·구를 누르세요.</p></section>
 {secs}'''
     return path, page(f'{G["name"]} 지역별 안내 | 내시간에', f'{G["name"]} 때 바로 할 일과 업체 부르는 법을 시·군·구별로 안내해요.', path, body, [('홈', '/'), (G['name'], path)])
+
+ARTICLES = json.load(open(os.path.join(ROOT, 'data', 'articles.json'), encoding='utf-8'))
+
+def related_articles(kind):
+    L = [(slug, a) for slug, a in ARTICLES.items() if a.get('kind') == kind]
+    if not L:
+        return ''
+    return '<section class="card"><h2>더 자세히 알아보기</h2><ul class="plain">' + ''.join(
+        f'<li><a href="{E(url_path("정보", slug))}">{E(a["title"])}</a></li>' for slug, a in L) + '</ul></section>'
+
+def article_page(slug, a):
+    path = url_path('정보', slug)
+    secs = ''
+    for s in a['sections']:
+        inner = ''
+        if 'ol' in s:
+            inner = '<ol class="steps">' + ''.join(f'<li><b>{E(t)}</b><span>{E(d)}</span></li>' for t, d in s['ol']) + '</ol>'
+        elif 'ul' in s:
+            inner = '<ul class="plain">' + ''.join(f'<li>{E(x)}</li>' for x in s['ul']) + '</ul>'
+        elif 'table' in s:
+            head, *rows = s['table']
+            inner = ('<div class="tbl"><table><thead><tr>' + ''.join(f'<th scope="col">{E(h)}</th>' for h in head) + '</tr></thead><tbody>'
+                     + ''.join('<tr>' + ''.join(f'<td>{E(c)}</td>' for c in r) + '</tr>' for r in rows) + '</tbody></table></div>')
+        if s.get('note'):
+            inner += f'<p class="muted">{E(s["note"])}</p>'
+        secs += f'<section class="card"><h2>{E(s["h"])}</h2>{inner}</section>'
+    kind = a.get('kind')
+    G = GUIDES.get(kind, {})
+    when = ''.join(f'<li>{E(w)}</li>' for w in a.get('call_when', []))
+    ask = ''.join(f'<li>{E(w)}</li>' for w in a.get('ask', []))
+    gl = url_path('안내', kind) if kind in GUIDES else ''
+    src = ''.join(f'<li><a href="{E(u)}" rel="nofollow noopener" target="_blank">{E(t)}</a></li>' for t, u in a.get('sources', []))
+    body = f"""<section class="hero"><h1>{E(a['h1'])}</h1><p class="lead">{E(a['lead'])}</p></section>
+<div class="warn">{a['warn']}</div>
+{secs}
+{photo_section(kind, (G.get('name') or '') + ' 현장은 이렇게 해요') if kind else ''}
+<section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul>{f'<p><a class="btn" href="{E(gl)}">우리 동네 {E(G.get("name",""))} 업체 찾기</a></p>' if gl else ''}</section>
+{f'<section class="card"><h2>업체에 전화할 때 물어볼 것</h2><ul class="plain">{ask}</ul></section>' if ask else ''}
+{faq_html(a['faqs'])}
+<section class="card"><h2>참고한 자료</h2><ul class="plain src">{src}</ul><p class="muted">공공기관·제조사 안내를 바탕으로 정리했어요. 마지막 확인: {TODAY.isoformat()}</p></section>"""
+    art = {'@context': 'https://schema.org', '@type': 'Article', 'headline': a['title'], 'description': a['desc'],
+           'dateModified': TODAY.isoformat(), 'inLanguage': 'ko', 'mainEntityOfPage': abs_url(path),
+           'author': {'@type': 'Organization', 'name': '내시간에'}, 'publisher': {'@type': 'Organization', 'name': '내시간에'}}
+    return path, page(f"{a['title']} | 내시간에", a['desc'], path, body, [('홈', '/'), ('생활 정보', url_path('정보')), (a['title'], path)], [art, faq_ld(a['faqs'])])
+
+def article_index():
+    path = url_path('정보')
+    items = ''.join(f'<li><a href="{E(url_path("정보", slug))}"><b>{E(a["title"])}</b></a><span>{E(a["desc"])}</span></li>' for slug, a in ARTICLES.items())
+    body = f'<section class="hero"><h1>생활 정보</h1><p class="lead">집에 문제가 생겼을 때 업체 부르기 전에 볼 것들을 공공기관 안내를 바탕으로 정리했어요.</p></section><section class="card"><ul class="steps">{items}</ul></section>'
+    return path, page('생활 정보 | 내시간에', '수도 동파, 보일러 에러처럼 집에 문제가 생겼을 때 먼저 볼 것들을 정리했어요.', path, body, [('홈', '/'), ('생활 정보', path)])
 
 def trade_index(regions_count):
     path = url_path('자동차정비')
@@ -1001,10 +1055,14 @@ def main():
         for kind in gkinds:
             if kind in GUIDES:
                 p, h = guide_page(kind, reg, {**ctx, 'stores': sdata['kinds'].get(kind, {}).get(reg, [])})
-                write(p, h); urls.append(p); guides.append((kind, p))
+                write(p, h)
+                if 'noindex' not in h: urls.append(p); guides.append((kind, p))
     for kind in gkinds:
         if CFG.get('guides_all') and kind in GUIDES:
             p, h = guide_index(kind, gregs); write(p, h); urls.append(p)
+    for slug, a in ARTICLES.items():
+        p, h = article_page(slug, a); write(p, h); urls.append(p)
+    p, h = article_index(); write(p, h); urls.append(p)
     fp = os.path.join(ROOT, 'data', 'food.json')
     food = json.load(open(fp, encoding='utf-8')) if os.path.exists(fp) and FOOD else {'groups': {}}
     food_pages = []

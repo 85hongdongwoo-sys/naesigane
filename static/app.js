@@ -1,6 +1,12 @@
 (function(){
   function $(s,r){return (r||document).querySelector(s)}
   function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
+  // ---- 전화 버튼을 누르면 몇 번 눌렸는지 기록 (어느 페이지·업종·지역에서 전화가 나오는지 보려고)
+  document.addEventListener('click',function(e){
+    var a=e.target&&e.target.closest&&e.target.closest('a[href^="tel:"]'); if(!a||typeof gtag!=='function')return;
+    var seg=decodeURIComponent(location.pathname).split('/').filter(Boolean);
+    try{gtag('event','phone_call_click',{section:seg[0]||'home',sub1:seg[1]||'',sub2:seg[2]||'',link_text:(a.textContent||'').trim().slice(0,30)})}catch(_){}
+  },true);
   // ---- 지금 영업 중 표시
   var now=new Date(), wd=now.getDay(), mins=now.getHours()*60+now.getMinutes();
   function toMin(t){var m=/^(\d{1,2}):(\d{2})/.exec(t||'');return m?(+m[1])*60+(+m[2]):null}
