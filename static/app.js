@@ -69,6 +69,23 @@
     },function(){fallback()});
   })});
 
+  // ---- 업체 위치 지도 (화면에 보일 때 카카오 지도 API로 그리기, 캡처 저장 없음)
+  var spots=$$('.spot');
+  function drawSpot(box){
+    if(box.dataset.done)return;box.dataset.done='1';
+    loadKakao().then(function(){
+      var K=kakao.maps,pts=JSON.parse(box.dataset.pts||'[]'),bd=new K.LatLngBounds();
+      box.innerHTML='';var el=document.createElement('div');el.className='spot-map';box.appendChild(el);
+      var m=new K.Map(el,{center:new K.LatLng(pts[0][0],pts[0][1]),level:7,draggable:false,scrollwheel:false,disableDoubleClickZoom:true});
+      pts.forEach(function(p){var ll=new K.LatLng(p[0],p[1]);bd.extend(ll);
+        var d=document.createElement('span');d.className='spot-dot';new K.CustomOverlay({position:ll,content:d,yAnchor:.5,xAnchor:.5}).setMap(m)});
+      m.setBounds(bd,24,24,24,24);setTimeout(function(){m.relayout();m.setBounds(bd,24,24,24,24)},300);
+    },function(){box.innerHTML='<p class="muted">지도를 불러오지 못했어요.</p>'});
+  }
+  if(spots.length){
+    if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){io.unobserve(e.target);drawSpot(e.target)}})},{rootMargin:'200px'});spots.forEach(function(b){io.observe(b)})}
+    else spots.forEach(drawSpot);
+  }
   // ---- 위성사진·로드뷰 (카카오 지도 API, 누를 때 불러오기)
   $$('.kview').forEach(function(box){$('.kv-load',box).addEventListener('click',function(){
     var btn=this;btn.disabled=true;btn.textContent='불러오는 중…';

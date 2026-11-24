@@ -571,7 +571,22 @@ def age_section(kind, gu, apts):
         tail = '업체에 전화할 때 몇 년쯤 된 건물인지 함께 말하면 필요한 장비와 비용을 더 정확히 들을 수 있어요.'
     li = ''.join(f'<li><b>{E(t)}</b><span>{E(A[k])}</span></li>' for k, t in rows)
     return (f'<section class="card"><h2>{E(gu)} 건물 나이로 보는 {E(GUIDES[kind]["name"])}</h2><p>{lead}</p>'
-            f'<ul class="steps age">{li}</ul><p class="muted">{tail}</p></section>')
+            f'{decade_chart(gu, ys)}<ul class="steps age">{li}</ul><p class="muted">{tail}</p></section>')
+
+def decade_chart(gu, ys):
+    """아파트 지은 연도를 10년 단위 세로 막대로 보여 줘요 (지역마다 모양이 달라요)."""
+    if len(ys) < 3:
+        return ''
+    c = Counter(min(max(y // 10 * 10, 1970), 2020) for y in ys)
+    keys = list(range(1970, 2030, 10))
+    mx = max(c.values())
+    yr = TODAY.year
+    cols = ''.join(
+        f'<div class="dc-col{" old" if yr - (k + 9) >= 30 else ""}"><span class="dc-n">{c.get(k, 0)}</span>'
+        f'<span class="dc-bar" style="height:{round(c.get(k, 0) / mx * 82)}%"></span>'
+        f'<span class="dc-x">{"~1979" if k == 1970 else (str(k) + "~") if k == 2020 else str(k)[2:] + "년대"}</span></div>' for k in keys)
+    return (f'<figure class="dchart" role="img" aria-label="{E(gu)} 아파트 지은 연도 분포">'
+            f'<div class="dc-plot">{cols}</div><figcaption>{E(gu)} 아파트 지은 연도 (단지 수) · 진한 막대는 지은 지 30년 넘은 단지예요</figcaption></figure>')
 
 def choose_section(trade, gu):
     where = f'{E(gu)}에서 ' if gu else ''
@@ -581,6 +596,16 @@ def choose_section(trade, gu):
             '<li><b>사진을 보내고 대략 견적</b>을 받아 보세요. 와서 보고 값이 크게 달라지면 이유를 꼭 물어보세요.</li>'
             '<li><b>사업자등록이 된 업체</b>인지, 작업 뒤 <b>영수증이나 카드 결제</b>가 되는지 확인하세요. 나중에 하자가 생겼을 때 근거가 돼요.</li>'
             '<li><b>다시 고장 나면 무상으로 봐 주는 기간</b>이 있는지 물어보세요.</li></ul></section>')
+
+def spot_map(gu, trade, stores):
+    """그 지역 업체가 어디 모여 있는지 카카오 지도 API로 바로 보여 줘요 (캡처 저장 없음, 볼 때마다 API가 그려요)."""
+    pts = [[r[3], r[4]] for r in (stores or []) if len(r) > 4 and r[3] and r[4]][:200]
+    if len(pts) < 3:
+        return ''
+    return (f'<section class="card"><h2>{E(gu)} {E(trade)} 업체 위치</h2>'
+            f'<p>점 하나가 업체 한 곳이에요. {E(gu)}에서 {E(trade)} 업체가 어디에 몰려 있는지 한눈에 볼 수 있어요.</p>'
+            f'<div class="spot" data-pts=\'{json.dumps(pts)}\'><p class="muted spot-wait">지도를 불러오는 중이에요…</p></div>'
+            f'<p class="source">지도: 카카오맵 · 위치는 공공데이터 주소 기준이라 실제와 조금 다를 수 있어요.</p></section>')
 
 def view_section(gu, pts, center=None, what='업체'):
     """카카오 지도 API로 위성(스카이뷰)·로드뷰를 그 자리에서 보여 줘요. 캡처 저장 없음."""
@@ -691,6 +716,7 @@ def guide_page(kind, region, ctx=None):
 {warn}
 {live}
 {view_section(gu, [(r[3], r[4], i + 1) for i, r in enumerate(stores[:60]) if len(r) > 4], ctx.get('center'))}
+{spot_map(gu, G['name'], stores)}
 {photo_section(kind, G['name'] + ' 현장은 이렇게 해요')}
 {related_articles(kind)}
 <section class="card"><h2>{E(G['steps_title'])}</h2><ol class="steps">{steps}</ol></section>

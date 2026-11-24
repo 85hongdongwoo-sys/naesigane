@@ -247,3 +247,17 @@ h3.sub{color:var(--sub);font-weight:600;font-size:13px;text-transform:none;margi
 .tbl th{background:#F2F4F6;font-weight:600;white-space:nowrap}
 .src a{overflow-wrap:anywhere;word-break:break-all}
 .tbl td:first-child{white-space:nowrap}
+/* 업체 위치 지도 */
+.spot{position:relative;width:100%;aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:#F2F4F6;margin-top:8px}
+.spot-map{position:absolute;inset:0}
+.spot-wait{padding:16px}
+.spot-dot{display:block;width:10px;height:10px;border-radius:50%;background:#1B64DA;border:2px solid #fff;box-shadow:0 0 0 1px rgba(27,100,218,.35)}
+/* 아파트 지은 연도 세로 막대 */
+.dchart{margin:14px 0 6px}
+.dc-plot{display:flex;align-items:flex-end;gap:6px;height:170px;padding:0 2px;border-bottom:1px solid #D1D6DB}
+.dc-col{flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative;padding-bottom:22px}
+.dc-bar{display:block;width:70%;max-width:44px;min-height:2px;background:#90B4EC;border-radius:6px 6px 0 0}
+.dc-col.old .dc-bar{background:#1B64DA}
+.dc-n{font-size:13px;color:#4E5968;margin-bottom:4px}
+.dc-x{position:absolute;bottom:0;font-size:12px;color:#6B7684;white-space:nowrap}
+.dchart figcaption{font-size:13px;color:#6B7684;margin-top:8px}
