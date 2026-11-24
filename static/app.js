@@ -79,7 +79,7 @@
       var m=new K.Map(el,{center:new K.LatLng(pts[0][0],pts[0][1]),level:7,draggable:false,scrollwheel:false,disableDoubleClickZoom:true});
       pts.forEach(function(p){var ll=new K.LatLng(p[0],p[1]);bd.extend(ll);
         var d=document.createElement('span');d.className='spot-dot';new K.CustomOverlay({position:ll,content:d,yAnchor:.5,xAnchor:.5}).setMap(m)});
-      m.setBounds(bd,24,24,24,24);setTimeout(function(){m.relayout();m.setBounds(bd,24,24,24,24)},300);
+      function fit(){m.relayout();m.setBounds(bd,40,40,40,40);m.setLevel(m.getLevel()+1)}fit();setTimeout(fit,300);
     },function(){box.innerHTML='<p class="muted">지도를 불러오지 못했어요.</p>'});
   }
   if(spots.length){
