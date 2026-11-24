@@ -596,7 +596,7 @@ def decade_chart(gu, ys):
         f'</div><span class="dc-x">{lab(k)}</span></div>' for k in keys)
     old_me = round(sum(1 for y in ys if yr - y >= 30) / len(ys) * 100)
     cmp = '더 많아요' if old_me > NATIONAL_OLD + 3 else '더 적어요' if old_me < NATIONAL_OLD - 3 else '비슷해요'
-    return (f'<p>{E(gu)}은(는) 지은 지 30년 넘은 아파트가 <b>{old_me}%</b>로, 전국 평균 <b>{NATIONAL_OLD}%</b>보다 {cmp}.</p>'
+    return (f'<p>{E(gu)}{josa(gu, '은', '는')} 지은 지 30년 넘은 아파트가 <b>{old_me}%</b>로, 전국 평균 <b>{NATIONAL_OLD}%</b>보다 {cmp}.</p>'
             f'<figure class="dchart" role="img" aria-label="{E(gu)}와 전국 평균의 아파트 지은 연도 비율">'
             f'<div class="dc-legend"><span><i class="me"></i>{E(gu)}</span><span><i class="nat"></i>전국 평균</span></div>'
             f'<div class="dc-plot">{cols}</div><figcaption>아파트 지은 연도별 단지 비율(%) · 진한 파랑은 지은 지 30년 넘은 단지예요</figcaption></figure>')
@@ -609,6 +609,25 @@ def choose_section(trade, gu):
             '<li><b>사진을 보내고 대략 견적</b>을 받아 보세요. 와서 보고 값이 크게 달라지면 이유를 꼭 물어보세요.</li>'
             '<li><b>사업자등록이 된 업체</b>인지, 작업 뒤 <b>영수증이나 카드 결제</b>가 되는지 확인하세요. 나중에 하자가 생겼을 때 근거가 돼요.</li>'
             '<li><b>다시 고장 나면 무상으로 봐 주는 기간</b>이 있는지 물어보세요.</li></ul></section>')
+
+_GP = os.path.join(ROOT, 'data', 'citygas.json')
+CITYGAS = json.load(open(_GP, encoding='utf-8')) if os.path.exists(_GP) else {'regions': {}}
+
+def gas_section(region):
+    """그 지역을 맡은 도시가스 회사와 고객센터 번호 (한국도시가스협회 자료)."""
+    gu = gu_name(region)
+    L = CITYGAS['regions'].get(region)
+    if L:
+        rows = ''.join(f'<tr><td>{E(c)}</td><td><a href="tel:{E(p.replace("-", ""))}">{E(p)}</a></td></tr>' for c, p in L)
+        many = f'<p class="muted">{E(gu)}{josa(gu, '은', '는')} 동네에 따라 맡은 회사가 나뉘어요. 가스 요금 고지서에 적힌 회사와 번호가 가장 정확해요.</p>' if len(L) > 1 else '<p class="muted">동네 끝자락은 맡은 회사가 다를 수 있어요. 가스 요금 고지서에 적힌 번호가 가장 정확해요.</p>'
+        body = (f'<p>{E(gu)}에서 도시가스를 공급하는 회사예요. 가스 냄새가 나거나, 가스레인지도 불이 안 붙어서 가스가 안 들어오는 것 같을 때는 보일러 업체보다 <b>도시가스 회사에 먼저</b> 연락하세요.</p>'
+                f'<div class="tbl"><table><thead><tr><th scope="col">도시가스 회사</th><th scope="col">고객센터</th></tr></thead><tbody>{rows}</tbody></table></div>{many}')
+    else:
+        body = (f'<p>한국도시가스협회 고객센터 목록에는 {E(gu)}{josa(gu, '을', '를')} 맡은 도시가스 회사가 나오지 않아요. 도시가스가 아직 안 들어온 동네가 많을 수 있어요.</p>'
+                '<p>LPG(프로판 가스)를 쓰는 집이라면 가스통이나 계량기에 붙은 판매점 번호로 연락하세요. 도시가스를 쓰는 집이라면 가스 요금 고지서에 적힌 번호로 연락하면 돼요.</p>')
+    return (f'<section class="card"><h2>{E(gu)} 도시가스 회사 연락처</h2>{body}'
+            f'<p class="warn"><b>가스 냄새가 나면</b> 전기 스위치를 건드리지 말고 밸브를 잠근 뒤 밖에서 도시가스 회사나 119에 연락하세요.</p>'
+            f'<p class="source">출처: 한국도시가스협회 도시가스 고객센터 찾기 ({E(CITYGAS.get("_date", ""))} 확인)</p></section>')
 
 def spot_map(gu, trade, stores):
     """그 지역 업체가 어디 모여 있는지 카카오 지도 API로 바로 보여 줘요 (캡처 저장 없음, 볼 때마다 API가 그려요)."""
@@ -729,6 +748,7 @@ def guide_page(kind, region, ctx=None):
 {warn}
 {live}
 {view_section(gu, [(r[3], r[4], i + 1) for i, r in enumerate(stores[:60]) if len(r) > 4], ctx.get('center'))}
+{gas_section(region) if kind == '보일러-고장' else ''}
 {spot_map(gu, G['name'], stores)}
 {photo_section(kind, G['name'] + ' 현장은 이렇게 해요')}
 {related_articles(kind)}
