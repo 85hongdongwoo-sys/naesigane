@@ -34,8 +34,22 @@ RULES = {
     '업소용-냉장고': (REPAIR, r'냉장|냉동|쇼케이스'),
     '간판-수리': ({'명함/간판/광고물 제작', '광고물 설계/제작업', '옥외/전시 광고 대행업'}, None),
     '팝업-인테리어': ({'인테리어 디자인업', '전시/컨벤션/행사 대행 서비스업'}, None),
+    '가전-수리': ({'가전제품 수리업'}, None),
+    '창호-샷시': (REPAIR, r'샷시|섀시|새시|창호|중문|창문'),
+    '도배-장판': (REPAIR, r'(?<!수)도배|장판|벽지|바닥재|데코타일'),
+    '폐기물-철거': (REPAIR | {'산업설비; 운송장비 및 공공장소 청소업'}, r'폐기물|철거|폐가구|수거|고물|재활용'),
+    '타이어-출동': ({'타이어 소매업', '자동차 정비소', '자동차 부품 소매업'}, r'타이어|긴급|견인|출동|배터리|렉카'),
+    '집수리': (REPAIR, r'집수리|하우징|생활수리|만능|철물'),
+    '동물병원': ({'동물병원'}, None),
+    '약국': ({'약국'}, None),
 }
 RX = {k: re.compile(v[1]) if v[1] else None for k, v in RULES.items()}
+# 이름에 이런 말이 있으면 그 업종에서 빼요 (다른 업종 업체가 섞이는 것 막기)
+EXCL = {'가전-수리': re.compile(r'택시미터|금속|보일러|셀틱|나비엔|린나이|귀뚜라미'),
+        '도배-장판': re.compile(r'배관|하수구|막힘|누수|보일러'),
+        '집수리': re.compile(r'에어컨|세탁기|청소|열쇠|키\b'),
+        '폐기물-철거': re.compile(r'에어컨|주방|중고'),
+        '창호-샷시': re.compile(r'에어컨|가스')}
 known = set(json.load(open(os.path.join(ROOT, 'data', 'release_order.json'), encoding='utf-8')))
 apts = json.load(open(os.path.join(ROOT, 'data', 'apartments.json'), encoding='utf-8'))['regions']
 known |= set(apts)
@@ -49,7 +63,7 @@ out, miss = {}, {}
 for fp in sorted(glob.glob(os.path.join(sys.argv[1], '*.csv'))):
     for x in csv.DictReader(open(fp, encoding='utf-8-sig')):
         sub = x['상권업종소분류명']
-        kinds = [k for k, (cats, _) in RULES.items() if sub in cats and (RX[k] is None or RX[k].search(x['상호명']))]
+        kinds = [k for k, (cats, _) in RULES.items() if sub in cats and (RX[k] is None or RX[k].search(x['상호명'])) and not (k in EXCL and EXCL[k].search(x['상호명']))]
         if not kinds:
             continue
         addr = build.norm_addr(x['도로명주소'] or x['지번주소'])

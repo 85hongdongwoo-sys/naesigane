@@ -239,7 +239,12 @@ def book_btn(trade, region, name=''):
     href = url_path('요청') + '?t=' + qv(trade) + '&r=' + qv(region) + ('&s=' + qv(name) if name else '')
     return f'<a class="btn book" href="{E(href)}">예약 요청<span class="dev">개발 중</span></a>'
 
+NO_BOOK = {'약국', '동물병원'}
+
 def act_row(trade, region, name, call_html, nav):
+    if trade in NO_BOOK:
+        return (f'<div class="actions act2">{call_html}'
+                f'<a class="btn ghost sm" href="{E(nav)}" target="_blank" rel="noopener">길찾기</a></div>')
     return (f'<div class="actions act3">{book_btn(trade, region, name)}{call_html}'
             f'<a class="btn ghost sm" href="{E(nav)}" target="_blank" rel="noopener">길찾기</a></div>')
 
@@ -515,8 +520,9 @@ GUIDES = json.load(open(os.path.join(ROOT, 'data', 'guides.json'), encoding='utf
 
 GROUPS = [
     ('급한 출장 수리', ['보일러-고장', '수도-동파', '하수구-막힘', '누수-탐지', '열쇠-도어락', '전기-고장', '유리-파손']),
-    ('집 수리', ['에어컨-고장', '수전-교체', '방수', '정화조-청소']),
-    ('청소·정리·방역', ['입주청소', '줄눈-탄성코트', '유품정리', '방역-해충', '비둘기-벌집']),
+    ('집 수리', ['에어컨-고장', '가전-수리', '수전-교체', '창호-샷시', '도배-장판', '집수리', '방수', '정화조-청소']),
+    ('청소·정리·방역', ['입주청소', '줄눈-탄성코트', '유품정리', '폐기물-철거', '방역-해충', '비둘기-벌집']),
+    ('차·반려동물·약국', ['타이어-출동', '동물병원', '약국']),
     ('상가·업소', ['사다리차', '셔터-자동문', '업소용-냉장고', '간판-수리', '팝업-인테리어']),
 ]
 def group_of(kind):

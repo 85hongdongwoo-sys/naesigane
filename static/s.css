@@ -317,3 +317,4 @@ h3.sub{color:var(--sub);font-weight:600;font-size:13px;text-transform:none;margi
 .sfig-in{margin:4px 0 14px}
 .sfig-in figcaption .muted{font-size:12px}
 .tbl td small{color:#8B95A1;font-size:12px}
+.actions.act2{grid-template-columns:1fr 1fr}
