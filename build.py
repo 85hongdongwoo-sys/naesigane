@@ -897,6 +897,7 @@ def article_page(slug, a):
     body = f"""<section class="hero"><h1>{E(a['h1'])}</h1><p class="lead">{E(a['lead'])}</p></section>
 <div class="warn">{a['warn']}</div>
 {secs}
+{extra_html('정보/' + slug)}
 {photo_section(kind, (G.get('name') or '') + ' 현장은 이렇게 해요') if kind else ''}
 <section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul>{f'<p><a class="btn" href="{E(gl)}">우리 동네 {E(G.get("name",""))} 업체 찾기</a></p>' if gl else ''}</section>
 {f'<section class="card"><h2>업체에 전화할 때 물어볼 것</h2><ul class="plain">{ask}</ul></section>' if ask else ''}
@@ -913,8 +914,35 @@ def article_index():
     items += f'<li><a href="{E(url_path("정보", "겨울-집-점검"))}"><b>겨울 집 점검 체크리스트</b></a><span>수도·보일러·전기를 하나씩 체크하고, 체크한 항목은 기억돼요.</span></li>'
     items += f'<li><a href="{E(url_path("진단"))}"><b>자가진단</b></a><span>보일러·동파·하수구·누수·전기 증상을 고르면 집에서 먼저 확인할 것을 알려 드려요.</span></li>'
     items += f'<li><a href="{E(url_path("연락처카드"))}"><b>우리 집 비상 연락처 카드</b></a><span>동네를 고르면 가스·수도·전기 연락처를 한 장으로 만들어 드려요.</span></li>'
-    body = f'<section class="hero"><h1>생활 정보</h1><p class="lead">집에 문제가 생겼을 때 업체 부르기 전에 볼 것들을 공공기관 안내를 바탕으로 정리했어요.</p></section><section class="card"><ul class="steps">{items}</ul></section>'
+    body = f'<section class="hero"><h1>생활 정보</h1><p class="lead">집에 문제가 생겼을 때 업체 부르기 전에 볼 것들을 공공기관 안내를 바탕으로 정리했어요.</p></section><section class="card"><ul class="steps">{items}</ul></section>' + extra_html('정보') + mixed_photos('업체를 부르기 전에 먼저 확인해요', [('수도-동파', 1), ('보일러-고장', 2)])
     return path, page('생활 정보 | 내시간에', '수도 동파, 보일러 에러처럼 집에 문제가 생겼을 때 먼저 볼 것들을 정리했어요.', path, body, [('홈', '/'), ('생활 정보', path)])
+
+EXTRA = json.load(open(os.path.join(ROOT, 'data', 'extra_content.json'), encoding='utf-8'))
+
+def extra_html(key):
+    out = ''
+    for sec in EXTRA.get(key, []):
+        inner = ''.join(f'<p>{E(x)}</p>' for x in sec.get('p', []))
+        if sec.get('ul'):
+            inner += '<ul class="plain">' + ''.join(f'<li>{E(x)}</li>' for x in sec['ul']) + '</ul>'
+        if sec.get('ol'):
+            inner += '<ol class="steps">' + ''.join(f'<li><b>{E(t)}</b><span>{E(d)}</span></li>' for t, d in sec['ol']) + '</ol>'
+        if sec.get('after'):
+            inner += f'<p>{E(sec["after"])}</p>'
+        out += f'<section class="card"><h2>{E(sec["h"])}</h2>{inner}</section>'
+    return out
+
+def mixed_photos(title, picks):
+    figs = ''
+    for key, i in picks:
+        w = WORK_PHOTOS.get(key)
+        if not w or not os.path.exists(os.path.join(ROOT, 'static', 'img', f'{w[0]}-{i}.webp')):
+            continue
+        figs += (f'<figure><img src="/img/{w[0]}-{i}.webp" width="1200" height="675" alt="{E(w[i])}" loading="lazy" decoding="async">'
+                 f'<figcaption>{E(w[i])}</figcaption></figure>')
+    if not figs:
+        return ''
+    return f'<section class="card work"><h2>{E(title)}</h2><div class="work-figs">{figs}</div><p class="muted">사진은 이해를 돕는 예시예요. 실제 업체와 다를 수 있어요.</p></section>'
 
 DIAG = json.load(open(os.path.join(ROOT, 'data', 'diagnose.json'), encoding='utf-8'))
 
@@ -937,6 +965,7 @@ def diag_page(kind, D):
 <div class="dg-area">{blocks}</div>
 <section class="card dg-done" hidden><h2>해결됐어요</h2><p>다행이에요. 같은 일이 또 생기면 이 페이지에서 다시 확인해 보세요.</p><p><a href="{E(url_path('연락처카드'))}">우리 집 비상 연락처 카드 만들어 두기</a></p></section>
 <section class="card dg-call" data-kind="{E(kind)}"><h2>그래도 안 되면 업체를 부르세요</h2><p>여기까지 해 봤다고 말하면 기사님이 원인을 더 빨리 찾아요.</p><p class="dg-recent"></p><p><a class="btn" href="{E(gl)}">우리 동네 {E(G.get('name', ''))} 업체 찾기</a></p></section>
+{extra_html('진단/' + kind)}
 {photo_section(kind, G.get('name', '') + ' 현장은 이렇게 해요')}"""
     faqs = [[f'{s["label"]} 어떻게 하나요?', ' '.join(f'{i + 1}. {t}: {d}' for i, (t, d) in enumerate(s['steps']))] for s in D['symptoms']]
     return path, page(f"{D['title']} - 증상별로 집에서 먼저 확인할 것 | 내시간에", D['lead'], path, body,
@@ -945,7 +974,7 @@ def diag_page(kind, D):
 def diag_index():
     path = url_path('진단')
     items = ''.join(f'<li><a href="{E(url_path("진단", k))}"><b>{E(D["title"])}</b></a><span>{E(", ".join(s["label"] for s in D["symptoms"][:3]))}</span></li>' for k, D in DIAG.items())
-    body = f'<section class="hero"><h1>자가진단</h1><p class="lead">증상을 고르면 업체 부르기 전에 집에서 확인할 것을 하나씩 알려 드려요.</p></section><section class="card"><ul class="steps">{items}</ul></section>'
+    body = f'<section class="hero"><h1>자가진단</h1><p class="lead">증상을 고르면 업체 부르기 전에 집에서 확인할 것을 하나씩 알려 드려요.</p></section><section class="card"><ul class="steps">{items}</ul></section>' + extra_html('진단') + mixed_photos('업체를 부르면 이렇게 해요', [('보일러-고장', 1), ('하수구-막힘', 1)])
     return path, page('자가진단 - 보일러·동파·하수구·누수·전기 | 내시간에', '증상을 고르면 집에서 먼저 확인할 것을 순서대로 알려 드려요.', path, body, [('홈', '/'), ('자가진단', path)])
 
 def card_page(region_centers):
@@ -959,6 +988,8 @@ def card_page(region_centers):
 <section class="card"><h2>동네 고르기</h2><div class="cc-sel"><label>시·도<select id="cc-sido"><option value="">고르세요</option>{opts}</select></label><label>시·군·구<select id="cc-gu" disabled><option value="">먼저 시·도를 고르세요</option></select></label></div></section>
 <section class="card cc-card" id="cc-card" hidden aria-live="polite"></section>
 <section class="card"><h2>번호 안내</h2><ul class="plain"><li>도시가스 회사 번호는 한국도시가스협회 고객센터 찾기 자료예요. 동네 끝자락은 다를 수 있으니 가스 요금 고지서 번호가 가장 정확해요.</li><li>120은 서울·인천 등 지역 민원 콜센터 번호예요. 콜센터가 없는 시·군은 시·군청 상수도 담당 부서로 연락하세요.</li><li>정전은 한국전력 123, 불이 나거나 다친 사람이 있으면 119예요.</li></ul></section>
+{extra_html('연락처카드')}
+{mixed_photos('급할 때 이렇게 확인해요', [('전기-고장', 2), ('수도-동파', 2), ('보일러-고장', 2)])}
 <script type="application/json" id="cc-data">{data}</script>"""
     return path, page('우리 집 비상 연락처 카드 - 가스·수도·전기 | 내시간에', '동네를 고르면 도시가스 회사, 수도 동파 신고, 정전 문의 번호를 한 장으로 만들어 저장·공유할 수 있어요.', path, body, [('홈', '/'), ('비상 연락처 카드', path)])
 
@@ -999,6 +1030,8 @@ def checklist_page():
     body = f"""<section class="hero"><h1>겨울 집 점검 체크리스트</h1><p class="lead">한파 오기 전에 하나씩 체크해 보세요. 체크한 항목은 이 휴대폰에 기억돼서 다음에 들어와도 이어서 할 수 있어요.</p></section>
 <div class="ck-bar card"><b class="ck-count">0 / {n}</b> 끝냈어요 <button type="button" class="btn ghost sm ck-reset">처음부터</button></div>
 {secs}
+{extra_html('정보/겨울-집-점검')}
+{mixed_photos('겨울 점검, 이런 모습이에요', [('수도-동파', 2), ('보일러-고장', 1)])}
 <section class="card"><h2>더 알아보기</h2><ul class="plain"><li><a href="{E(url_path('정보', '수도-계량기-동파'))}">수도 계량기 얼었을 때 녹이는 법</a></li><li><a href="{E(url_path('정보', '보일러-에러-숫자'))}">보일러 에러 숫자가 떴을 때</a></li><li><a href="{E(url_path('연락처카드'))}">우리 집 비상 연락처 카드</a></li></ul>
 <p class="muted">서울시·인천시 상수도사업본부, 행정안전부 겨울철 안전 안내를 바탕으로 정리했어요.</p></section>"""
     return path, page('겨울 집 점검 체크리스트 - 수도·보일러·전기 | 내시간에', '한파 전에 수도 계량기, 보일러, 전기·가스를 하나씩 점검하는 체크리스트예요. 체크한 항목은 기억돼요.', path, body, [('홈', '/'), ('생활 정보', url_path('정보')), ('겨울 집 점검 체크리스트', path)])
