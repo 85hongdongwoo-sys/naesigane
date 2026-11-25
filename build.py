@@ -546,7 +546,7 @@ def wait_section(kind, gu, near=None):
             f'<h3 class="sub">업체에 미리 알려 주면 좋은 것</h3>{prep}'
             f'<p class="muted">이걸 미리 보내면 업체가 맞는 부품과 장비를 챙겨 와서 한 번에 끝날 가능성이 높아지고, 출장비를 두 번 내는 일을 줄일 수 있어요.</p>{far}</section>')
 
-def age_section(kind, gu, apts):
+def age_section(kind, gu, apts, slim=False):
     X = GX.get(kind)
     if not X:
         return ''
@@ -571,6 +571,8 @@ def age_section(kind, gu, apts):
         rows = [('old', '지은 지 30년 넘은 집'), ('mid', '15~30년 된 집'), ('new', '15년 안 된 집')]
         tail = '업체에 전화할 때 몇 년쯤 된 건물인지 함께 말하면 필요한 장비와 비용을 더 정확히 들을 수 있어요.'
     li = ''.join(f'<li><b>{E(t)}</b><span>{E(A[k])}</span></li>' for k, t in rows)
+    if slim:
+        li = ''; tail = ''
     return (f'<section class="card"><h2>{E(gu)} 건물 나이로 보는 {E(GUIDES[kind]["name"])}</h2><p>{lead}</p>'
             f'{decade_chart(gu, ys)}<ul class="steps age">{li}</ul><p class="muted">{tail}</p></section>')
 
@@ -600,7 +602,7 @@ def decade_chart(gu, ys):
     return (f'<p>{E(gu)}{josa(gu, '은', '는')} 지은 지 30년 넘은 아파트가 <b>{old_me}%</b>로, 전국 평균 <b>{NATIONAL_OLD}%</b>보다 {cmp}.</p>'
             f'<figure class="dchart" role="img" aria-label="{E(gu)}와 전국 평균의 아파트 지은 연도 비율">'
             f'<div class="dc-legend"><span><i class="me"></i>{E(gu)}</span><span><i class="nat"></i>전국 평균</span></div>'
-            f'<div class="dc-plot">{cols}</div><figcaption>아파트 지은 연도별 단지 비율(%) · 진한 파랑은 지은 지 30년 넘은 단지예요</figcaption></figure>')
+            f'<div class="dc-plot">{cols}</div><figcaption>{"단지 비율(%)" if SLIM_NOW[0] else "아파트 지은 연도별 단지 비율(%) · 진한 파랑은 지은 지 30년 넘은 단지예요"}</figcaption></figure>')
 
 def choose_section(trade, gu):
     where = f'{E(gu)}에서 ' if gu else ''
@@ -626,6 +628,9 @@ def gas_section(region):
     else:
         body = (f'<p>한국도시가스협회 고객센터 목록에는 {E(gu)}{josa(gu, '을', '를')} 맡은 도시가스 회사가 나오지 않아요. 도시가스가 아직 안 들어온 동네가 많을 수 있어요.</p>'
                 '<p>LPG(프로판 가스)를 쓰는 집이라면 가스통이나 계량기에 붙은 판매점 번호로 연락하세요. 도시가스를 쓰는 집이라면 가스 요금 고지서에 적힌 번호로 연락하면 돼요.</p>')
+    if SLIM_NOW[0] and L:
+        return (f'<section class="card"><h2>{E(gu)} 도시가스 회사 연락처</h2><div class="tbl"><table><thead><tr><th scope="col">도시가스 회사</th><th scope="col">고객센터</th></tr></thead><tbody>{rows}</tbody></table></div>'
+                f'<p class="source">출처: 한국도시가스협회 ({E(CITYGAS.get("_date", ""))} 확인)</p></section>')
     return (f'<section class="card"><h2>{E(gu)} 도시가스 회사 연락처</h2>{body}'
             f'<p class="warn"><b>가스 냄새가 나면</b> 전기 스위치를 건드리지 말고 밸브를 잠근 뒤 밖에서 도시가스 회사나 119에 연락하세요.</p>'
             f'<p class="source">출처: 한국도시가스협회 도시가스 고객센터 찾기 ({E(CITYGAS.get("_date", ""))} 확인)</p></section>')
@@ -636,9 +641,9 @@ def spot_map(gu, trade, stores):
     if len(pts) < 3:
         return ''
     return (f'<section class="card"><h2>{E(gu)} {E(trade)} 업체 위치</h2>'
-            f'<p>점 하나가 업체 한 곳이에요. {E(gu)}에서 {E(trade)} 업체가 어디에 몰려 있는지 한눈에 볼 수 있어요.</p>'
-            f'<div class="spot" data-pts=\'{json.dumps(pts)}\'><p class="muted spot-wait">지도를 불러오는 중이에요…</p></div>'
-            f'<p class="source">지도: 카카오맵 · 위치는 공공데이터 주소 기준이라 실제와 조금 다를 수 있어요.</p></section>')
+            + ('' if SLIM_NOW[0] else f'<p>점 하나가 업체 한 곳이에요. {E(gu)}에서 {E(trade)} 업체가 어디에 몰려 있는지 한눈에 볼 수 있어요.</p>')
+            + f'<div class="spot" data-pts=\'{json.dumps(pts)}\'><p class="muted spot-wait">…</p></div>'
+            + ('<p class="source">지도: 카카오맵</p></section>' if SLIM_NOW[0] else '<p class="source">지도: 카카오맵 · 위치는 공공데이터 주소 기준이라 실제와 조금 다를 수 있어요.</p></section>'))
 
 def view_section(gu, pts, center=None, what='업체'):
     """카카오 지도 API로 위성(스카이뷰)·로드뷰를 그 자리에서 보여 줘요. 캡처 저장 없음."""
@@ -648,9 +653,9 @@ def view_section(gu, pts, center=None, what='업체'):
     if not center or not center[0]:
         return ''
     return (f'<section class="card"><h2>{E(gu)} 실제 모습 보기 (위성사진·로드뷰)</h2>'
-            f'<p>{E(gu)} 동네가 실제로 어떻게 생겼는지 위성사진과 거리 사진(로드뷰)으로 볼 수 있어요. '
-            f'{E(what)} 위치 번호를 누르면 그 앞 도로 모습이 나와서, 처음 가는 곳도 입구와 주차할 곳을 미리 확인할 수 있어요.</p>'
-            f'<div class="kview" data-lat="{center[0]}" data-lng="{center[1]}" data-pts=\'{json.dumps([[p[0], p[1], p[2]] for p in pts], ensure_ascii=False)}\'>'
+            + ('' if SLIM_NOW[0] else f'<p>{E(gu)} 동네가 실제로 어떻게 생겼는지 위성사진과 거리 사진(로드뷰)으로 볼 수 있어요. '
+            f'{E(what)} 위치 번호를 누르면 그 앞 도로 모습이 나와서, 처음 가는 곳도 입구와 주차할 곳을 미리 확인할 수 있어요.</p>')
+            + f'<div class="kview" data-lat="{center[0]}" data-lng="{center[1]}" data-pts=\'{json.dumps([[p[0], p[1], p[2]] for p in pts], ensure_ascii=False)}\'>'
             f'<button type="button" class="btn ghost wide kv-load">위성사진·로드뷰 보기</button>'
             f'<div class="kv-map" hidden></div><div class="kv-rv" hidden></div>'
             f'<p class="muted kv-note" hidden>위성사진에서 원하는 도로를 누르면 그 자리 로드뷰가 나와요.</p></div>'
@@ -677,11 +682,36 @@ def dong_section(trade, gu, dongs, apts):
             return s + '</span></li>'
         items = '<h3 class="sub">아파트가 많은 동네</h3><ul class="steps">' + ''.join(one(d, l) for d, l in rank) + '</ul>'
         p.append(f'그중 아파트가 가장 많은 곳은 {E(rank[0][0])}이에요.')
-    p.append(f'업체에 전화하거나 요청할 때 <b>동 이름과 아파트·건물 이름</b>을 함께 말하면 이동 시간과 출장비를 더 정확히 들을 수 있어요. '
+    if not SLIM_NOW[0]: p.append(f'업체에 전화하거나 요청할 때 <b>동 이름과 아파트·건물 이름</b>을 함께 말하면 이동 시간과 출장비를 더 정확히 들을 수 있어요. '
              f'같은 {E(gu)} 안이라도 업체 위치에서 먼 동네는 출장비가 더 붙을 수 있으니 {E(trade)} 업체를 고를 때 가까운 곳을 먼저 보세요.')
     return f'<section class="card"><h2>{E(gu)} 동네별로 보면</h2><p>{" ".join(p)}</p>{items}</section>'
 
 WORK_PHOTOS = json.load(open(os.path.join(ROOT, 'data', 'work_photos.json'), encoding='utf-8'))
+
+_PS = os.path.join(ROOT, 'data', 'photo_slots.json')
+PHOTO_SLOTS = json.load(open(_PS, encoding='utf-8')) if os.path.exists(_PS) else {}
+
+def slot_fig(kind, slots, seed, title='', bare=False):
+    """글의 해당 부분에 맞는 사진 1장. 지역(seed)마다 다른 사진이 골라져요."""
+    S = PHOTO_SLOTS.get(kind)
+    if not S:
+        return ''
+    if isinstance(slots, str):
+        slots = [slots]
+    pool = [x for sl in slots for x in S.get(sl, []) if os.path.exists(os.path.join(ROOT, 'static', 'img', x[0] + '.webp'))]
+    if not pool:
+        return ''
+    h = int(hashlib.md5((seed + '|' + '+'.join(slots)).encode()).hexdigest(), 16)
+    f, cap = pool[h % len(pool)]
+    if SLIM_NOW[0] and not bare:
+        cap1 = cap.split('. ')[0].rstrip('.') + '.'
+        return (f'<section class="card sfig"><figure><img src="/img/{f}.webp" width="1200" height="675" alt="{E(cap)}" loading="lazy" decoding="async">'
+                f'<figcaption>{E(cap1)} <span class="muted">(예시 이미지)</span></figcaption></figure></section>')
+    if bare:
+        return f'<figure class="sfig-in"><img src="/img/{f}.webp" width="1200" height="675" alt="{E(cap)}" loading="lazy" decoding="async"><figcaption>{E(cap)} <span class="muted">(예시 이미지)</span></figcaption></figure>'
+    head = f'<h2>{E(title)}</h2>' if title else ''
+    return (f'<section class="card sfig">{head}<figure><img src="/img/{f}.webp" width="1200" height="675" alt="{E(cap)}" loading="lazy" decoding="async">'
+            f'<figcaption>{E(cap)}</figcaption></figure><p class="muted">예시 이미지예요. 실제 현장·업체와 다를 수 있어요.</p></section>')
 
 def photo_section(key, title):
     w = WORK_PHOTOS.get(key)
@@ -691,8 +721,98 @@ def photo_section(key, title):
                    f'<figcaption>{E(w[i])}</figcaption></figure>' for i in (1, 2))
     return f'<section class="card work"><h2>{E(title)}</h2><div class="work-figs">{figs}</div><p class="muted">사진은 이해를 돕는 예시예요. 실제 업체와 다를 수 있어요.</p></section>'
 
+SLIM = set(GUIDES)
+SLIM_NOW = [False]
+
+def apt_table(kind, region, apts, lim=50):
+    """그 지역 아파트 단지 표 (오래된 순). 지역마다 완전히 다른 실제 자료예요."""
+    L = [a for a in apts if a[2]]
+    if len(L) < 3:
+        return ''
+    gu = gu_name(region); yr = TODAY.year
+    L = sorted(L, key=lambda a: (a[2], a[0]))[:lim]
+    rows = ''.join(f'<tr><td>{E(a[0])}</td><td>{E(a[1] or "")}</td><td>{a[2]}<small> ({yr - a[2]}년)</small></td>'
+                   f'<td>{(f"{a[3]:,}" if a[3] else "")}</td><td>{E((a[4] or "").replace("개별난방", "개별").replace("지역난방", "지역").replace("중앙난방", "중앙"))}</td></tr>' for a in L)
+    more = f'<p class="muted">{len(apts)}곳 중 오래된 단지 {len(L)}곳만 보여 드려요.</p>' if len(apts) > len(L) else ''
+    return (f'<section class="card"><h2>{E(gu)} 오래된 아파트 단지부터 보기</h2>'
+            f'<div class="tbl"><table><thead><tr><th scope="col">단지</th><th scope="col">동</th><th scope="col">지은 해</th><th scope="col">세대</th><th scope="col">난방</th></tr></thead><tbody>{rows}</tbody></table></div>{more}'
+            f'<p class="source">공동주택관리정보시스템(K-apt) 관리비 공개 단지 기준</p></section>')
+
+def region_story(kind, region, ctx):
+    """그 지역 자료로만 쓰는 이야기 (업체 분포·아파트·난방·도시가스·이웃 지역)."""
+    G = GUIDES[kind]; gu = gu_name(region); yr = TODAY.year
+    stores = ctx.get('stores') or []; apts = ctx.get('apts') or []
+    P = []
+    if stores:
+        dc = Counter(r[2] for r in stores if r[2])
+        top = dc.most_common(3)
+        if top:
+            share = round(sum(c for _, c in top) / len(stores) * 100)
+            P.append(f'{E(gu)}에서 찾은 {E(G["name"])} 업체는 <b>{len(stores)}곳</b>이에요. '
+                     + '·'.join(f'{E(d)}({c}곳)' for d, c in top) + f'에 전체의 {share}%가 모여 있어요. '
+                     + (f'{E(top[0][0])} 쪽은 업체가 가까워요.' if top[0][1] >= 2 else ''))
+    ys = [a[2] for a in apts if a[2]]
+    if len(ys) >= 3:
+        avg = round(sum(ys) / len(ys)); o = sum(1 for y in ys if yr - y >= 30)
+        old = sorted((a for a in apts if a[2]), key=lambda a: a[2])[:2]
+        new = sorted((a for a in apts if a[2]), key=lambda a: -a[2])[:2]
+        P.append(f'{E(gu)} 아파트 {len(ys)}곳의 평균 준공 연도는 {avg}년이고, 지은 지 30년이 넘은 단지가 {o}곳이에요. '
+                 f'오래된 단지로는 {"·".join(E(a[0]) + f"({a[2]})" for a in old)}, 새 단지로는 {"·".join(E(a[0]) + f"({a[2]})" for a in new)}이(가) 있어요.')
+        indiv = [a for a in apts if a[4].startswith('개별')]
+        central = [a for a in apts if a[4] in ('지역난방', '중앙난방')]
+        if kind == '보일러-고장' and (indiv or central):
+            ip = round(len(indiv) / len(apts) * 100)
+            P.append(f'난방 방식은 개별난방 {len(indiv)}곳({ip}%), 지역·중앙난방 {len(central)}곳이에요. '
+                     + (f'{E(central[0][0])} 같은 지역·중앙난방 단지는 관리사무소가 먼저예요.' if central else ''))
+    if kind == '보일러-고장':
+        L = CITYGAS['regions'].get(region)
+        if L:
+            P.append(f'{E(gu)}의 도시가스는 ' + '·'.join(f'{E(c)}({E(p)})' for c, p in L)
+                     + ('가 동네별로 나눠 맡고 있어요. ' if len(L) > 1 else '이(가) 공급해요. ')
+                     )
+        else:
+            P.append(f'{E(gu)}{josa(gu, "은", "는")} 협회 목록에 도시가스 회사가 없어 LPG를 쓰는 집이 많을 수 있어요.')
+    near = ctx.get('near') or []
+    if near:
+        P.append(f'이웃한 {"·".join(E(short_region(r)) for r in near[:3])} 업체도 부를 수 있어요.')
+    if not P:
+        return ''
+    return f'<section class="card"><h2>{E(gu)} {E(G["name"])}, 우리 동네는 이래요</h2>' + ''.join(f'<p>{x}</p>' for x in P) + '</section>'
+
+def region_faq(kind, region, ctx):
+    G = GUIDES[kind]; gu = gu_name(region); F = []
+    stores = ctx.get('stores') or []; apts = ctx.get('apts') or []
+    if stores:
+        top = Counter(r[2] for r in stores if r[2]).most_common(1)
+        F.append((f'{gu} {G["name"]} 업체는 몇 곳인가요?', f'공공데이터 기준 {len(stores)}곳이에요.' + (f' {top[0][0]}에 가장 많아요({top[0][1]}곳).' if top else '')))
+    if kind == '보일러-고장':
+        L = CITYGAS['regions'].get(region)
+        if L:
+            F.append((f'{gu} 도시가스 회사는 어디인가요?', ', '.join(f'{c}({p})' for c, p in L) + '예요. 가스 요금 고지서 번호가 가장 정확해요.'))
+    ys = [a[2] for a in apts if a[2]]
+    if len(ys) >= 3:
+        o = round(sum(1 for y in ys if TODAY.year - y >= 30) / len(ys) * 100)
+        F.append((f'{gu} 아파트는 오래된 편인가요?', f'아파트 {len(ys)}곳 중 지은 지 30년 넘은 단지가 {o}%예요. 전국 평균은 {NATIONAL_OLD}%예요.'))
+    return F
+
+def slim_lead(kind, region, ctx):
+    gu = gu_name(region); n = len(ctx.get('stores') or []); a = len(ctx.get('apts') or [])
+    L = CITYGAS['regions'].get(region)
+    bits = [f'업체 {n}곳'] if n else []
+    if a: bits.append(f'아파트 {a}곳의 나이·난방 방식')
+    if L: bits.append(f'도시가스 {L[0][0]} 번호')
+    return E(f'{gu}의 ' + ', '.join(bits) + '를 한 페이지에 모았어요.') if bits else E(f'{gu} {GUIDES[kind]["name"]} 때 볼 것을 모았어요.')
+
+def slim_summary(kind, region):
+    G = GUIDES[kind]; gu = gu_name(region)
+    first = ' · '.join(t for t, _ in G['steps'][:3])
+    return (f'<section class="card"><h2>{E(gu)}에서 업체 부르기 전에</h2>'
+            f'<p><a class="btn" href="{E(url_path("진단", kind))}">증상 고르고 하나씩 확인하기</a> '
+            f'<a class="btn ghost" href="{E(url_path("안내", kind))}">{E(G["name"])} 전체 안내</a></p></section>')
+
 def guide_page(kind, region, ctx=None):
     G = GUIDES[kind]
+    SLIM_NOW[0] = kind in SLIM
     gu = gu_name(region)
     ctx = ctx or {}
     dongs = ctx.get('dongs') or []
@@ -712,12 +832,13 @@ def guide_page(kind, region, ctx=None):
         sd = ctx.get('store_date', '')
         live_static = (f'<section class="card"><h2>{E(gu)} {E(G["name"])} 업체 {total}곳</h2>'
             f'<div id="members" data-region="{E(region)}" data-trade="{E(G["name"])}" hidden></div>'
-            f'<p class="muted">\'전화\'를 누르면 번호를 찾아 바로 걸려요. \'예약 요청\'은 원하는 시간을 정해 업체에 요청하는 기능으로, 지금 만들고 있어요.</p>'
-            f'<div class="shops" data-page="20">{cards}</div>'
+            + ('' if SLIM_NOW[0] else f'<p class="muted">\'전화\'를 누르면 번호를 찾아 바로 걸려요. \'예약 요청\'은 원하는 시간을 정해 업체에 요청하는 기능으로, 지금 만들고 있어요.</p>')
+            + f'<div class="shops" data-page="20">{cards}</div>'
             f'<button type="button" class="btn ghost wide more" hidden>더 보기</button>'
             + (f'<p class="muted">그 외 {total - len(stores)}곳은 네이버에서 찾아보세요.</p>' if total > len(stores) else '')
-            + f'<p class="source">업체 이름·주소: 소상공인시장진흥공단 상가(상권)정보{(" (" + sd[:4] + "." + sd[4:6] + ")") if sd else ""}. 영업 상황이 바뀌었을 수 있어요. '
-            f'사장님이 등록하면 \'예약 답변 업체\'로 먼저 보여요. <a href="{E(url_path("사장님"))}">사장님 무료 등록</a></p></section>')
+            + (f'<p class="source">출처: 소상공인시장진흥공단 상가정보{(" (" + sd[:4] + "." + sd[4:6] + ")") if sd else ""}</p></section>' if SLIM_NOW[0] else
+            f'<p class="source">업체 이름·주소: 소상공인시장진흥공단 상가(상권)정보{(" (" + sd[:4] + "." + sd[4:6] + ")") if sd else ""}. 영업 상황이 바뀌었을 수 있어요. '
+            f'사장님이 등록하면 \'예약 답변 업체\'로 먼저 보여요. <a href="{E(url_path("사장님"))}">사장님 무료 등록</a></p></section>'))
     live = (f'<section class="card live-shops" data-kw="{E("|".join(G.get("kw", [G["name"]])))}" data-gu="{E(gu.split()[-1])}" data-must="{E(G.get('must', ''))}" data-area="{E(gu)}" data-trade="{E(G['name'])}" data-region="{E(region)}" data-lat="{ctr[0]}" data-lng="{ctr[1]}">'
             f'<h2>{E(gu)} {E(G["name"])} 업체</h2>'
             f'<div id="members" data-region="{E(region)}" data-trade="{E(G["name"])}" hidden></div>'
@@ -731,6 +852,7 @@ def guide_page(kind, region, ctx=None):
     car = ''
     if ctx.get('shops'):
         car = f'<p class="muted">차 문제라면 <a href="{E(url_path("자동차정비", slug_region(region)))}">{E(gu)} 자동차 정비소 {ctx["shops"]}곳</a>도 볼 수 있어요.</p>'
+    SOON = f'''<section class="card soon"><h2>원하는 시간에 맞춰 부르는 기능, 준비 중이에요</h2><p>시간과 예산을 정해 요청하면 {E(gu)} 업체 사장님들이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. <a href="{E(url_path('요청'))}?t={quote(G['name'])}&amp;r={quote(region)}">어떻게 요청하는지 미리 보기</a></p></section>'''
     fill = lambda t: t.replace('{gu}', gu).replace('{region}', region)
     path = url_path('안내', kind, region.replace(' ', '-'))
     title = fill(G['title']).replace('{sr}', short_region(region)) + ' | 내시간에'
@@ -745,34 +867,45 @@ def guide_page(kind, region, ctx=None):
     others = ''.join(f'<a href="{E(url_path("안내", k, region.replace(" ", "-")))}">{E(gu)} {E(GUIDES[k]["name"])}</a>' for k in gkinds if k != kind and k in GUIDES)
     rest = ''.join(f'<a href="{E(url_path("안내", k, region.replace(" ", "-")))}">{E(GUIDES[k]["name"])}</a>' for k in GUIDES if k not in gkinds)
     body = f'''<section class="hero"><h1>{E(gu)} {E(G['name'])},<br>{E(G['h1_tail'])}</h1>
-<p class="lead">{E(fill(G['lead']))}</p></section>
+<p class="lead">{E(fill(G['lead'])) if kind not in SLIM else slim_lead(kind, region, ctx)}</p></section>
 {warn}
+{'' if kind in SLIM else slot_fig(kind, 'warn', region)}
 {live}
-{view_section(gu, [(r[3], r[4], i + 1) for i, r in enumerate(stores[:60]) if len(r) > 4], ctx.get('center'))}
+{'' if kind in SLIM else view_section(gu, [(r[3], r[4], i + 1) for i, r in enumerate(stores[:60]) if len(r) > 4], ctx.get('center'))}
 {frost_box(region) if kind in ('수도-동파', '보일러-고장') else ''}
 {gas_section(region) if kind == '보일러-고장' else ''}
 {spot_map(gu, G['name'], stores)}
-{photo_section(kind, G['name'] + ' 현장은 이렇게 해요')}
-{related_articles(kind)}
-<section class="card"><h2>{E(G['steps_title'])}</h2><ol class="steps">{steps}</ol></section>
-{wait_section(kind, gu, near)}
-<section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul></section>
-{extra}
-{f'<section class="card"><h2>업체에 전화할 때 꼭 물어볼 것</h2><ul class="plain">{ask}</ul></section>' if ask else ''}
-<section class="card soon"><h2>원하는 시간에 맞춰 부르는 기능, 준비 중이에요</h2><p>시간과 예산을 정해 요청하면 {E(gu)} 업체 사장님들이 가능한 시간과 예상 가격으로 답해 주는 기능을 만들고 있어요. <a href="{E(url_path('요청'))}?t={quote(G['name'])}&amp;r={quote(region)}">어떻게 요청하는지 미리 보기</a></p></section>
+{'' if kind in PHOTO_SLOTS else photo_section(kind, G['name'] + ' 현장은 이렇게 해요')}
+{'' if kind in SLIM else related_articles(kind)}
+{region_story(kind, region, ctx) if kind in SLIM else ''}
+{slim_summary(kind, region) if kind in SLIM else f'<section class="card"><h2>{E(G["steps_title"])}</h2><ol class="steps">{steps}</ol></section>'}
+{slot_fig(kind, 'check', region)}
+{'' if kind in SLIM else wait_section(kind, gu, near)}
+{slot_fig(kind, ['error', 'hotwater', 'heat'], region)}
+{'' if kind in SLIM else f'<section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul></section>'}
+{slot_fig(kind, 'pro', region)}
+{'' if kind in SLIM else extra}
+{f'<section class="card"><h2>업체에 전화할 때 꼭 물어볼 것</h2><ul class="plain">{ask}</ul></section>' if ask and kind not in SLIM else ''}
+{'' if kind in SLIM else SOON}
 {local}
-{age_section(kind, gu, ctx.get('apts') or [])}
+{age_section(kind, gu, ctx.get('apts') or [], slim=kind in SLIM)}
+{apt_table(kind, region, ctx.get('apts') or []) if kind in SLIM else ''}
 {apt_section(kind, gu, ctx.get('apts'), ctx.get('apt_date', ''))}
-{choose_section(G['name'], gu)}
-{faq_html(faqs)}
+{'' if kind in SLIM else choose_section(G['name'], gu)}
+{slot_fig(kind, 'prevent', region)}
+{faq_html(region_faq(kind, region, ctx) if kind in SLIM else faqs)}
 <section class="card"><h2>{E(gu)} {E(gname)}</h2><div class="links">{others}</div>{car}</section>
-<section class="card"><h2>{E(gu)} 다른 업종</h2><div class="links">{rest}</div></section>
+{'' if kind in SLIM else f'<section class="card"><h2>{E(gu)} 다른 업종</h2><div class="links">{rest}</div></section>'}
 {near_html}
-{owner_cta(gu + ' ' + G['name'])}
-<p class="source">이 안내는 일반적인 정보예요. 집 상태에 따라 방법과 비용이 달라질 수 있어요. 위험하다고 느껴지면 혼자 하지 말고 전문가를 부르세요.</p>'''
+{'' if kind in SLIM else owner_cta(gu + ' ' + G['name'])}
+{'' if kind in SLIM else '<p class="source">이 안내는 일반적인 정보예요. 집 상태에 따라 방법과 비용이 달라질 수 있어요. 위험하다고 느껴지면 혼자 하지 말고 전문가를 부르세요.</p>'}'''
     crumbs = [('홈', '/'), (G['name'], url_path('안내', kind)), (f'{gu} {G["name"]}', path)]
     # 동네 업체가 3곳 미만인 안내 페이지는 지역 이름만 다른 비슷한 글이 되기 쉬워서 검색에서 빼 둬요
     thin = len(ctx.get('stores') or []) < 3
+    if kind in SLIM and not thin:
+        _t = re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', re.sub(r'<script.*?</script>', '', body, flags=re.S)))).strip()
+        _ap = len([a for a in (ctx.get('apts') or []) if a[2]])
+        thin = len(_t) < 3100 or _ap < 25
     return path, page(title, desc, path, body, crumbs, [faq_ld(faqs)], noindex=thin)
 
 # ---------------------------------------------------------------- simple pages
@@ -850,8 +983,11 @@ def guide_index(kind, regions):
 {f'<section class="card"><h2>업체가 올 때까지 이렇게 하세요</h2><ol class="steps">{wait}</ol></section>' if wait else ''}
 <section class="card"><h2>이럴 땐 업체를 부르세요</h2><ul class="plain">{when}</ul></section>
 {f'<section class="card"><h2>건물 나이로 보는 {E(G["name"])}</h2><ul class="steps age">{age}</ul></section>' if age else ''}
+{''.join(f'<section class="card"><h2>{E(h.replace("{gu}", "우리 동네").replace("{region}", "우리 지역"))}</h2><p>{b.replace("{gu}", "우리 동네").replace("{region}", "우리 지역")}</p></section>' for h, b in G.get('sections', [])) if kind in SLIM else ''}
+{slot_fig(kind, ['check', 'error', 'hotwater', 'heat'], 'hub')}
 {choose_section(G['name'], '')}
 {related_articles(kind)}
+{slot_fig(kind, ['pro', 'prevent'], 'hub2')}
 {f'<section class="card"><h2>업체에 전화할 때 꼭 물어볼 것</h2><ul class="plain">' + ''.join(f'<li>{E(a)}</li>' for a in G.get('ask', [])) + '</ul></section>' if G.get('ask') else ''}
 {faq_html([(q.replace('{gu}', '우리 동네').replace('{region}', '우리 지역'), a.replace('{gu}', '우리 동네').replace('{region}', '우리 지역')) for q, a in G['faqs']])}
 <section class="card"><h2>지역별 {E(G['name'])} 안내</h2><p class="muted">시·도를 찾아 우리 시·군·구를 누르세요.</p></section>
@@ -946,6 +1082,8 @@ def mixed_photos(title, picks):
 
 DIAG = json.load(open(os.path.join(ROOT, 'data', 'diagnose.json'), encoding='utf-8'))
 
+DIAG_SLOT = {'dead': 'check', 'error': 'error', 'hotwater': 'hotwater', 'heat': 'heat', 'noise': 'pro'}
+
 def diag_page(kind, D):
     path = url_path('진단', kind)
     G = GUIDES.get(kind, {})
@@ -956,17 +1094,19 @@ def diag_page(kind, D):
                         f'<div class="dg-btns"><button type="button" class="btn sm dg-ok">해결됐어요</button><button type="button" class="btn ghost sm dg-no">안 됐어요, 다음</button></div></li>'
                         for t, d in s['steps'])
         more = f'<p><a href="{E(s["more"])}">이 증상 더 자세히 보기</a></p>' if s.get('more') else ''
-        blocks += (f'<section class="card dg-sym" id="s-{E(s["id"])}" data-s="{E(s["id"])}"><h2>{E(s["label"])}</h2>'
+        fig = slot_fig(kind, DIAG_SLOT.get(s['id'], ''), 'diag-' + s['id'], bare=True) if DIAG_SLOT.get(s['id']) else ''
+        blocks += (f'<section class="card dg-sym" id="s-{E(s["id"])}" data-s="{E(s["id"])}"><h2>{E(s["label"])}</h2>{fig}'
                    f'<ol class="steps dg-steps">{steps}</ol>{more}</section>')
     gl = url_path('안내', kind)
     body = f"""<section class="hero"><h1>{E(D['title'])}</h1><p class="lead">{E(D['lead'])}</p></section>
 <div class="warn">{E(D['danger'])}</div>
+{slot_fig(kind, 'warn', 'diag')}
 <section class="card"><h2>어떤 증상인가요?</h2><div class="dg-picks">{picks}</div></section>
 <div class="dg-area">{blocks}</div>
 <section class="card dg-done" hidden><h2>해결됐어요</h2><p>다행이에요. 같은 일이 또 생기면 이 페이지에서 다시 확인해 보세요.</p><p><a href="{E(url_path('연락처카드'))}">우리 집 비상 연락처 카드 만들어 두기</a></p></section>
 <section class="card dg-call" data-kind="{E(kind)}"><h2>그래도 안 되면 업체를 부르세요</h2><p>여기까지 해 봤다고 말하면 기사님이 원인을 더 빨리 찾아요.</p><p class="dg-recent"></p><p><a class="btn" href="{E(gl)}">우리 동네 {E(G.get('name', ''))} 업체 찾기</a></p></section>
 {extra_html('진단/' + kind)}
-{photo_section(kind, G.get('name', '') + ' 현장은 이렇게 해요')}"""
+{slot_fig(kind, 'prevent', 'diag', '다음 겨울엔 이렇게 미리 챙겨요') if kind in PHOTO_SLOTS else photo_section(kind, G.get('name', '') + ' 현장은 이렇게 해요')}"""
     faqs = [[f'{s["label"]} 어떻게 하나요?', ' '.join(f'{i + 1}. {t}: {d}' for i, (t, d) in enumerate(s['steps']))] for s in D['symptoms']]
     return path, page(f"{D['title']} - 증상별로 집에서 먼저 확인할 것 | 내시간에", D['lead'], path, body,
                       [('홈', '/'), ('자가진단', url_path('진단')), (D['title'], path)], [faq_ld(faqs)])
@@ -1000,7 +1140,7 @@ def frost_box(region, region_centers=None):
     if not c:
         return ''
     return (f'<section class="card frost" data-lat="{c[0]:.3f}" data-lng="{c[1]:.3f}" data-gu="{E(gu_name(region))}">'
-            f'<h2>{E(gu_name(region))} 오늘 밤 동파 위험</h2><p class="muted frost-wait">날씨 예보를 불러오는 중이에요…</p>'
+            f'<h2>{E(gu_name(region))} 오늘 밤 동파 위험</h2><p class="muted frost-wait">…</p>'
             f'<p class="source">예보: Open-Meteo(기상 모델 예보) · 단계별 행동요령: 서울시 상수도사업본부</p></section>')
 
 CHECK = [
@@ -1136,7 +1276,9 @@ def apt_section(kind, gu, apts, apt_date):
     central = [a for a in apts if a[4] in ('지역난방', '중앙난방')]
     dis = [a[6] for a in apts if a[6]]
     p = []
-    if kind == '보일러-고장':
+    if kind == '보일러-고장' and SLIM_NOW[0]:
+        pass
+    elif kind == '보일러-고장':
         p.append(f'{E(gu)} 아파트 {n}곳 중 <b>개별난방 {len(indiv)}곳</b>, <b>지역·중앙난방 {len(central)}곳</b>이에요.')
         if central:
             p.append(f'지역·중앙난방 단지({ex(central)} 등)는 집에 보일러가 없어서, 난방이 안 되면 업체보다 <b>관리사무소에 먼저</b> 연락해요.')

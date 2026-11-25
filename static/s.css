@@ -309,3 +309,11 @@ h3.sub{color:var(--sub);font-weight:600;font-size:13px;text-transform:none;margi
 .ck small{color:#6B7684;font-size:13px;overflow-wrap:anywhere}
 .ck input:checked+span b{color:#8B95A1;text-decoration:line-through}
 @media print{.top,.crumbs,footer,.cc-act,.cc-sel,.hero .lead{display:none!important}.cc-card{box-shadow:none;border:1px solid #000}}
+/* 글 사이 예시 사진 */
+.sfig figure,.sfig-in{margin:0}
+.sfig img,.sfig-in img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:12px;background:#F2F4F6}
+.sfig figcaption,.sfig-in figcaption{margin-top:8px;font-size:15px;line-height:1.6;color:#333D4B;word-break:keep-all;overflow-wrap:anywhere}
+.sfig .muted{margin:6px 0 0;font-size:12px}
+.sfig-in{margin:4px 0 14px}
+.sfig-in figcaption .muted{font-size:12px}
+.tbl td small{color:#8B95A1;font-size:12px}
