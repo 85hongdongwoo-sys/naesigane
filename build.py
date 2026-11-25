@@ -200,6 +200,7 @@ def page(title, desc, path, body, crumbs=None, jsonld=None, extra_head='', noind
 <script>window.NSG={{kakao:{json.dumps(CFG.get('kakao_js_key') or '')},api:{json.dumps(CFG.get('supabase_url') or '')},key:{json.dumps(CFG.get('supabase_anon_key') or '')},regions:{json.dumps(sorted(RELEASED) if path.startswith(url_path('요청')) else [], ensure_ascii=False)},sms:{'true' if CFG.get('sms_enabled') else 'false'},reqLive:{'true' if CFG.get('requests_live') else 'false'}}};
 window.NSG.call=function(fn,args){{return fetch(NSG.api+'/rest/v1/rpc/'+fn,{{method:'POST',headers:Object.assign({{'apikey':NSG.key,'Content-Type':'application/json'}},/^eyJ/.test(NSG.key)?{{'Authorization':'Bearer '+NSG.key}}:{{}}),body:JSON.stringify(args)}}).then(function(r){{return r.json().then(function(j){{if(!r.ok)throw new Error((j&&j.message)||'잠시 뒤 다시 해 주세요');return j}})}})}};</script>
 <script src="/app.js?v={V('app.js')}" defer></script>
+<script src="/tools.js?v={V('tools.js')}" defer></script>
 {scripts}
 </body>
 </html>
@@ -748,6 +749,7 @@ def guide_page(kind, region, ctx=None):
 {warn}
 {live}
 {view_section(gu, [(r[3], r[4], i + 1) for i, r in enumerate(stores[:60]) if len(r) > 4], ctx.get('center'))}
+{frost_box(region) if kind in ('수도-동파', '보일러-고장') else ''}
 {gas_section(region) if kind == '보일러-고장' else ''}
 {spot_map(gu, G['name'], stores)}
 {photo_section(kind, G['name'] + ' 현장은 이렇게 해요')}
@@ -860,10 +862,15 @@ ARTICLES = json.load(open(os.path.join(ROOT, 'data', 'articles.json'), encoding=
 
 def related_articles(kind):
     L = [(slug, a) for slug, a in ARTICLES.items() if a.get('kind') == kind]
-    if not L:
+    extra = ''
+    if kind in DIAG:
+        extra += f'<li><a href="{E(url_path("진단", kind))}">{E(DIAG[kind]["title"])}: 증상 고르고 하나씩 확인하기</a></li>'
+    if kind in ('수도-동파', '보일러-고장'):
+        extra += f'<li><a href="{E(url_path("정보", "겨울-집-점검"))}">겨울 집 점검 체크리스트</a></li>'
+    if not L and not extra:
         return ''
     return '<section class="card"><h2>더 자세히 알아보기</h2><ul class="plain">' + ''.join(
-        f'<li><a href="{E(url_path("정보", slug))}">{E(a["title"])}</a></li>' for slug, a in L) + '</ul></section>'
+        f'<li><a href="{E(url_path("정보", slug))}">{E(a["title"])}</a></li>' for slug, a in L) + extra + '</ul></section>'
 
 def article_page(slug, a):
     path = url_path('정보', slug)
@@ -903,8 +910,98 @@ def article_page(slug, a):
 def article_index():
     path = url_path('정보')
     items = ''.join(f'<li><a href="{E(url_path("정보", slug))}"><b>{E(a["title"])}</b></a><span>{E(a["desc"])}</span></li>' for slug, a in ARTICLES.items())
+    items += f'<li><a href="{E(url_path("정보", "겨울-집-점검"))}"><b>겨울 집 점검 체크리스트</b></a><span>수도·보일러·전기를 하나씩 체크하고, 체크한 항목은 기억돼요.</span></li>'
+    items += f'<li><a href="{E(url_path("진단"))}"><b>자가진단</b></a><span>보일러·동파·하수구·누수·전기 증상을 고르면 집에서 먼저 확인할 것을 알려 드려요.</span></li>'
+    items += f'<li><a href="{E(url_path("연락처카드"))}"><b>우리 집 비상 연락처 카드</b></a><span>동네를 고르면 가스·수도·전기 연락처를 한 장으로 만들어 드려요.</span></li>'
     body = f'<section class="hero"><h1>생활 정보</h1><p class="lead">집에 문제가 생겼을 때 업체 부르기 전에 볼 것들을 공공기관 안내를 바탕으로 정리했어요.</p></section><section class="card"><ul class="steps">{items}</ul></section>'
     return path, page('생활 정보 | 내시간에', '수도 동파, 보일러 에러처럼 집에 문제가 생겼을 때 먼저 볼 것들을 정리했어요.', path, body, [('홈', '/'), ('생활 정보', path)])
+
+DIAG = json.load(open(os.path.join(ROOT, 'data', 'diagnose.json'), encoding='utf-8'))
+
+def diag_page(kind, D):
+    path = url_path('진단', kind)
+    G = GUIDES.get(kind, {})
+    picks = ''.join(f'<button type="button" class="dg-pick" data-s="{E(s["id"])}">{E(s["label"])}</button>' for s in D['symptoms'])
+    blocks = ''
+    for s in D['symptoms']:
+        steps = ''.join(f'<li class="dg-step"><b>{E(t)}</b><span>{E(d)}</span>'
+                        f'<div class="dg-btns"><button type="button" class="btn sm dg-ok">해결됐어요</button><button type="button" class="btn ghost sm dg-no">안 됐어요, 다음</button></div></li>'
+                        for t, d in s['steps'])
+        more = f'<p><a href="{E(s["more"])}">이 증상 더 자세히 보기</a></p>' if s.get('more') else ''
+        blocks += (f'<section class="card dg-sym" id="s-{E(s["id"])}" data-s="{E(s["id"])}"><h2>{E(s["label"])}</h2>'
+                   f'<ol class="steps dg-steps">{steps}</ol>{more}</section>')
+    gl = url_path('안내', kind)
+    body = f"""<section class="hero"><h1>{E(D['title'])}</h1><p class="lead">{E(D['lead'])}</p></section>
+<div class="warn">{E(D['danger'])}</div>
+<section class="card"><h2>어떤 증상인가요?</h2><div class="dg-picks">{picks}</div></section>
+<div class="dg-area">{blocks}</div>
+<section class="card dg-done" hidden><h2>해결됐어요</h2><p>다행이에요. 같은 일이 또 생기면 이 페이지에서 다시 확인해 보세요.</p><p><a href="{E(url_path('연락처카드'))}">우리 집 비상 연락처 카드 만들어 두기</a></p></section>
+<section class="card dg-call" data-kind="{E(kind)}"><h2>그래도 안 되면 업체를 부르세요</h2><p>여기까지 해 봤다고 말하면 기사님이 원인을 더 빨리 찾아요.</p><p class="dg-recent"></p><p><a class="btn" href="{E(gl)}">우리 동네 {E(G.get('name', ''))} 업체 찾기</a></p></section>
+{photo_section(kind, G.get('name', '') + ' 현장은 이렇게 해요')}"""
+    faqs = [[f'{s["label"]} 어떻게 하나요?', ' '.join(f'{i + 1}. {t}: {d}' for i, (t, d) in enumerate(s['steps']))] for s in D['symptoms']]
+    return path, page(f"{D['title']} - 증상별로 집에서 먼저 확인할 것 | 내시간에", D['lead'], path, body,
+                      [('홈', '/'), ('자가진단', url_path('진단')), (D['title'], path)], [faq_ld(faqs)])
+
+def diag_index():
+    path = url_path('진단')
+    items = ''.join(f'<li><a href="{E(url_path("진단", k))}"><b>{E(D["title"])}</b></a><span>{E(", ".join(s["label"] for s in D["symptoms"][:3]))}</span></li>' for k, D in DIAG.items())
+    body = f'<section class="hero"><h1>자가진단</h1><p class="lead">증상을 고르면 업체 부르기 전에 집에서 확인할 것을 하나씩 알려 드려요.</p></section><section class="card"><ul class="steps">{items}</ul></section>'
+    return path, page('자가진단 - 보일러·동파·하수구·누수·전기 | 내시간에', '증상을 고르면 집에서 먼저 확인할 것을 순서대로 알려 드려요.', path, body, [('홈', '/'), ('자가진단', path)])
+
+def card_page(region_centers):
+    path = url_path('연락처카드')
+    regs = sorted(r for r in region_centers)
+    gas = {r: v for r, v in CITYGAS['regions'].items()}
+    data = json.dumps({'regs': regs, 'gas': gas, 'ctr': {r: [round(c[0], 3), round(c[1], 3)] for r, c in region_centers.items()}}, ensure_ascii=False)
+    sidos = sorted({r.split(' ')[0] for r in regs})
+    opts = ''.join(f'<option>{E(s)}</option>' for s in sidos)
+    body = f"""<section class="hero"><h1>우리 집 비상 연락처 카드</h1><p class="lead">동네를 고르면 가스·수도·전기 문제 때 연락할 곳을 한 장으로 만들어 드려요. 휴대폰에 저장하거나 가족에게 보내 두세요.</p></section>
+<section class="card"><h2>동네 고르기</h2><div class="cc-sel"><label>시·도<select id="cc-sido"><option value="">고르세요</option>{opts}</select></label><label>시·군·구<select id="cc-gu" disabled><option value="">먼저 시·도를 고르세요</option></select></label></div></section>
+<section class="card cc-card" id="cc-card" hidden aria-live="polite"></section>
+<section class="card"><h2>번호 안내</h2><ul class="plain"><li>도시가스 회사 번호는 한국도시가스협회 고객센터 찾기 자료예요. 동네 끝자락은 다를 수 있으니 가스 요금 고지서 번호가 가장 정확해요.</li><li>120은 서울·인천 등 지역 민원 콜센터 번호예요. 콜센터가 없는 시·군은 시·군청 상수도 담당 부서로 연락하세요.</li><li>정전은 한국전력 123, 불이 나거나 다친 사람이 있으면 119예요.</li></ul></section>
+<script type="application/json" id="cc-data">{data}</script>"""
+    return path, page('우리 집 비상 연락처 카드 - 가스·수도·전기 | 내시간에', '동네를 고르면 도시가스 회사, 수도 동파 신고, 정전 문의 번호를 한 장으로 만들어 저장·공유할 수 있어요.', path, body, [('홈', '/'), ('비상 연락처 카드', path)])
+
+CENTERS = {}
+
+def frost_box(region, region_centers=None):
+    c = (region_centers or CENTERS).get(region)
+    if not c:
+        return ''
+    return (f'<section class="card frost" data-lat="{c[0]:.3f}" data-lng="{c[1]:.3f}" data-gu="{E(gu_name(region))}">'
+            f'<h2>{E(gu_name(region))} 오늘 밤 동파 위험</h2><p class="muted frost-wait">날씨 예보를 불러오는 중이에요…</p>'
+            f'<p class="source">예보: Open-Meteo(기상 모델 예보) · 단계별 행동요령: 서울시 상수도사업본부</p></section>')
+
+CHECK = [
+    ['수도', [['계량기함 안을 헌 옷으로 채우기', '헌 옷은 비닐로 한 번 싸서 넣어요. 젖으면 오히려 얼어요.'],
+              ['계량기함 뚜껑을 비닐로 덮기', '틈으로 찬 바람이 들어오지 않게 해요.'],
+              ['밖으로 드러난 수도관 보온재로 감싸기', '보일러 아래 배관도 함께 감싸요.'],
+              ['물 잠그는 메인 밸브 위치 알아 두기', '배관이 터졌을 때 바로 잠글 수 있어요.']]],
+    ['보일러', [['보일러 압력 확인 (1~1.5)', '1 아래면 설명서대로 물을 보충하거나 점검을 받아요.'],
+                ['배기통(연통) 빠짐·찌그러짐 확인', '배기가 새면 일산화탄소 중독 위험이 있어요.'],
+                ['보일러실 환기구 막지 않기', '춥다고 막으면 위험해요.'],
+                ['외출 기능 쓰는 법 알아 두기', '며칠 비울 때도 전원 플러그와 가스 밸브는 그대로 둬요.']]],
+    ['전기·가스', [['차단기함 위치 알아 두기', '정전 때 바로 확인할 수 있어요.'],
+                  ['전기장판·난로 주변 정리', '이불·옷이 열선에 닿지 않게 해요.'],
+                  ['가스 중간밸브 위치 알아 두기', '가스 냄새가 나면 바로 잠가요.']]],
+    ['연락처', [['우리 집 비상 연락처 카드 만들기', '도시가스·수도·정전 번호를 한 장으로 저장해요.']]],
+]
+
+def checklist_page():
+    path = url_path('정보', '겨울-집-점검')
+    n = 0; secs = ''
+    for h, items in CHECK:
+        li = ''
+        for t, d in items:
+            n += 1
+            li += f'<li><label class="ck"><input type="checkbox" data-k="c{n}"><span><b>{E(t)}</b><small>{E(d)}</small></span></label></li>'
+        secs += f'<section class="card"><h2>{E(h)}</h2><ul class="cklist">{li}</ul></section>'
+    body = f"""<section class="hero"><h1>겨울 집 점검 체크리스트</h1><p class="lead">한파 오기 전에 하나씩 체크해 보세요. 체크한 항목은 이 휴대폰에 기억돼서 다음에 들어와도 이어서 할 수 있어요.</p></section>
+<div class="ck-bar card"><b class="ck-count">0 / {n}</b> 끝냈어요 <button type="button" class="btn ghost sm ck-reset">처음부터</button></div>
+{secs}
+<section class="card"><h2>더 알아보기</h2><ul class="plain"><li><a href="{E(url_path('정보', '수도-계량기-동파'))}">수도 계량기 얼었을 때 녹이는 법</a></li><li><a href="{E(url_path('정보', '보일러-에러-숫자'))}">보일러 에러 숫자가 떴을 때</a></li><li><a href="{E(url_path('연락처카드'))}">우리 집 비상 연락처 카드</a></li></ul>
+<p class="muted">서울시·인천시 상수도사업본부, 행정안전부 겨울철 안전 안내를 바탕으로 정리했어요.</p></section>"""
+    return path, page('겨울 집 점검 체크리스트 - 수도·보일러·전기 | 내시간에', '한파 전에 수도 계량기, 보일러, 전기·가스를 하나씩 점검하는 체크리스트예요. 체크한 항목은 기억돼요.', path, body, [('홈', '/'), ('생활 정보', url_path('정보')), ('겨울 집 점검 체크리스트', path)])
 
 def trade_index(regions_count):
     path = url_path('자동차정비')
@@ -963,7 +1060,14 @@ def home(regions_count, region_centers, guides):
 <label class="search"><span class="sr">업종이나 동네 검색</span><input id="q" type="search" placeholder="예: 보일러, 하수구, 연수구 정비" autocomplete="off"></label>
 <button type="button" id="near" class="btn ghost wide">내 위치에서 가까운 곳</button>
 <div id="results" class="results" aria-live="polite"></div></section>
+<section class="card recent" hidden><h2>최근 본 페이지</h2><ul class="plain recent-list"></ul></section>
 <section class="card"><h2>지금 바로 찾을 수 있어요</h2><div class="hots">{hot_html}</div></section>
+<section class="card"><h2>업체 부르기 전에</h2><div class="toolz">
+<a href="{E(url_path('진단'))}"><b>자가진단</b><span>증상 고르면 할 일 안내</span></a>
+<a href="{E(url_path('연락처카드'))}"><b>비상 연락처 카드</b><span>가스·수도·전기 번호 한 장</span></a>
+<a href="{E(url_path('정보', '겨울-집-점검'))}"><b>겨울 집 점검</b><span>체크하면 기억돼요</span></a>
+<a href="{E(url_path('정보'))}"><b>생활 정보</b><span>동파·보일러 에러</span></a>
+</div></section>
 <section class="card req-cta"><h2>원하는 시간을 먼저 정하세요</h2><p>날짜·시간·예산을 정해 요청하면, 동네 업체 사장님이 가능한 시간과 가격으로 답해요.</p><a class="btn blue wide" href="{E(url_path('요청'))}">시간 정해 예약 요청하기</a></section>
 <section class="card"><h2>열린 동네</h2><div class="links">{open_regions}</div><p class="muted">동네와 업종은 차례로 늘어나요.</p></section>
 {('<section class="card"><h2>음식점 단체 예약·포장</h2><div class="hots">' + ''.join(f'<a class="hot" href="{E(url_path("음식점", g))}"><span class="ic" aria-hidden="true">{M["icon"]}</span><b>{E(M["name"])}</b></a>' for g, M in FOOD.items()) + '</div></section>') if FOOD_PAGES else ''}
@@ -1086,6 +1190,7 @@ def main():
         pts = [(s['lat'], s['lng']) for s in ss if s['lat']]
         if pts:
             centers[r] = (round(sum(p[0] for p in pts) / len(pts), 4), round(sum(p[1] for p in pts) / len(pts), 4))
+    CENTERS.update(centers)
     released = release_list(by_region, centers)
     RELEASED[:] = released
     missing = [r for r in CFG['released_regions'] if r not in released]
@@ -1127,6 +1232,10 @@ def main():
     for slug, a in ARTICLES.items():
         p, h = article_page(slug, a); write(p, h); urls.append(p)
     p, h = article_index(); write(p, h); urls.append(p)
+    for k, D in DIAG.items():
+        p, h = diag_page(k, D); write(p, h); urls.append(p)
+    p, h = diag_index(); write(p, h); urls.append(p)
+    p, h = checklist_page(); write(p, h); urls.append(p)
     fp = os.path.join(ROOT, 'data', 'food.json')
     food = json.load(open(fp, encoding='utf-8')) if os.path.exists(fp) and FOOD else {'groups': {}}
     food_pages = []
@@ -1162,6 +1271,7 @@ def main():
     DIR_PAGES[:] = dir_pages
     rc = {r: len(by_region[r]) for r in released}
     p, h = trade_index(rc); write(p, h); urls.append(p)
+    p, h = card_page(centers); write(p, h); urls.append(p)
     p, h = home(rc, centers, guides); write(p, h); urls.insert(0, p)
     for p, h in static_pages().items():
         write(p, h)

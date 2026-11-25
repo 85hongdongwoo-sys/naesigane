@@ -266,3 +266,46 @@ h3.sub{color:var(--sub);font-weight:600;font-size:13px;text-transform:none;margi
 .dc-x{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:12px;color:#6B7684;white-space:nowrap}
 .dchart figcaption{font-size:13px;color:#6B7684;margin-top:8px}
 @media (max-width:380px){.dc-b i{font-size:10px}.dc-plot{gap:3px}.dc-x{font-size:11px}}
+/* 자가진단 */
+.dg-picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.dg-pick{font:inherit;text-align:left;padding:14px 16px;border-radius:14px;border:1.5px solid #E5E8EB;background:#fff;color:#191F28;cursor:pointer;line-height:1.4;word-break:keep-all;overflow-wrap:anywhere}
+.dg-pick:hover{border-color:#90B4EC}
+.dg-pick.on{border-color:#1B64DA;background:#EEF4FD;color:#1B64DA;font-weight:600}
+.dg-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.dg-js .dg-step:not(.dg-cur) .dg-btns{display:none}
+.dg-step.dg-cur{background:#F7F9FC;border-radius:12px}
+.dg-call.dg-hl{box-shadow:0 0 0 2px #1B64DA}
+.dg-recent:empty{display:none}
+/* 업체 부르기 전에 도구 */
+.toolz{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.toolz a{display:flex;flex-direction:column;gap:4px;padding:14px;border-radius:14px;background:#F2F4F6;color:#191F28;text-decoration:none;min-width:0}
+.toolz a b{font-size:15px}.toolz a span{font-size:13px;color:#6B7684;word-break:keep-all;overflow-wrap:anywhere}
+@media(min-width:720px){.toolz{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* 비상 연락처 카드 */
+.cc-sel{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cc-sel label{display:flex;flex-direction:column;gap:6px;font-size:14px;color:#4E5968;min-width:0}
+.cc-sel select{font:inherit;padding:12px;border-radius:12px;border:1px solid #D1D6DB;background:#fff;width:100%;min-width:0;max-width:100%}
+@media(max-width:380px){.cc-sel{grid-template-columns:1fr}}
+.cc-list{list-style:none;margin:0;padding:0}
+.cc-list li{display:grid;grid-template-columns:1fr auto;grid-template-areas:"s s" "b a";gap:2px 10px;padding:12px 0;border-bottom:1px solid #E5E8EB}
+.cc-list li span{grid-area:s;font-size:13px;color:#6B7684}
+.cc-list li b{grid-area:b;min-width:0;overflow-wrap:anywhere}
+.cc-list li a,.cc-list li em{grid-area:a;font-weight:700;font-style:normal;white-space:nowrap}
+.cc-list li em{font-weight:400;font-size:13px;color:#4E5968;white-space:normal;text-align:right}
+.cc-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+/* 동파 위험 */
+.frost-now{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 8px}
+.frost-t{font-size:28px;font-weight:800;color:#191F28}
+.frost-lv{padding:4px 10px;border-radius:999px;font-size:14px;font-weight:700}
+.lv-낮음{background:#E8F3FF;color:#1B64DA}.lv-주의{background:#FFF3DC;color:#B26A00}.lv-경계{background:#FFE5D6;color:#C2410C}.lv-심각{background:#FDE2E1;color:#C62828}
+/* 체크리스트 */
+.ck-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ck-bar .ck-reset{margin-left:auto}
+.cklist{list-style:none;margin:0;padding:0}
+.cklist li{border-bottom:1px solid #E5E8EB}
+.ck{display:flex;gap:12px;align-items:flex-start;padding:12px 0;cursor:pointer}
+.ck input{width:22px;height:22px;margin:2px 0 0;flex:0 0 auto;accent-color:#1B64DA}
+.ck span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ck small{color:#6B7684;font-size:13px;overflow-wrap:anywhere}
+.ck input:checked+span b{color:#8B95A1;text-decoration:line-through}
+@media print{.top,.crumbs,footer,.cc-act,.cc-sel,.hero .lead{display:none!important}.cc-card{box-shadow:none;border:1px solid #000}}
