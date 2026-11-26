@@ -83,7 +83,7 @@
   function msg(t){show('<p class="v-msg">'+t+'</p>')}
   function run(text){
     text=(text||'').trim();if(!text){msg('찾을 내용을 말하거나 적어 주세요.');return}
-    $('#v-q').value=text;var o=parse(text);st.o=o;
+    $('#v-q').value=text;var o=parse(text);st.o=o;o.dial=/전화 ?해|전화 ?걸어|전화 ?좀|연결해|연결 ?좀|불러 ?줘|불러 ?주/.test(text);
     if(!o.region&&!o.dong){var a=area();if(a){o.region=a.region;o.dong=a.dong}}
     else if(!o.region&&o.dong){var a2=area();if(a2)o.region=a2.region}
     var kw=o.kind?o.kind[1]:text.replace(FILLER,' ').replace(/\s+/g,' ').trim();
@@ -101,7 +101,9 @@
       return places(kw,c,rad).then(function(L){
         L=L.filter(function(x){return x.phone});
         var seen={};L=L.filter(function(x){if(seen[x.phone])return false;seen[x.phone]=1;return true}).slice(0,6);
-        st.list=L;st.idx=-1;render(summary)})
+        st.list=L;st.idx=-1;render(summary);
+        if(o.dial&&L.length){var b=document.createElement('button');b.type='button';b.className='v-big';b.innerHTML='☎ '+esc(L[0].place_name)+'에 전화';b.onclick=function(){dial(0)};var sc=$('.v-script');sc.parentNode.insertBefore(b,sc);
+          toast('가장 가까운 '+L[0].place_name+'에 전화를 걸어요');setTimeout(function(){dial(0)},900)}})
     }).catch(function(){show(summary+'<p class="v-msg">지금은 지도 검색을 쓸 수 없어요. <a href="https://m.search.naver.com/search.naver?query='+encodeURIComponent(where+' '+kw)+'" target="_blank" rel="noopener">네이버에서 \''+esc(where+' '+kw)+'\' 찾기</a></p>')})}
   function askArea(o,kw){
     var opts=REG.map(function(r){return '<option value="'+esc(r[0])+'">'+esc(r[0])+'</option>'}).join('');
@@ -140,7 +142,7 @@
         cd.innerHTML=n+'초 뒤 <b>'+nm+'</b>에 전화해요 <button type="button" id="v-stop">멈추기</button>';
         $('#v-stop').onclick=function(){clearInterval(st.timer);cd.textContent='자동으로 넘어가기를 멈췄어요.'}};
       n++;tick();st.timer=setInterval(tick,1000)}}
-  function dial(i){var x=st.list[i];if(!x)return;st.idx=i;render($('.v-sum')?$('.v-sum').outerHTML:'');var li=document.querySelector('.v-it[data-i="'+i+'"]');if(li)li.scrollIntoView({behavior:'smooth',block:'center'});st.pending={i:i,t:Date.now()};if(window.gtag)gtag('event','phone_call_click',{section:'voice',sub1:x.place_name,link_text:'auto_next'});location.href='tel:'+x.phone.replace(/[^0-9]/g,'')}
+  function dial(i){var x=st.list[i];if(!x)return;st.idx=i;var big=$('.v-big');render($('.v-sum')?$('.v-sum').outerHTML:'');if(big&&i===0){var sc=$('.v-script');sc.parentNode.insertBefore(big,sc)}var li=document.querySelector('.v-it[data-i="'+i+'"]');if(li)li.scrollIntoView({behavior:'smooth',block:'center'});st.pending={i:i,t:Date.now()};if(window.gtag)gtag('event','phone_call_click',{section:'voice',sub1:x.place_name,link_text:'auto_next'});location.href='tel:'+x.phone.replace(/[^0-9]/g,'')}
   document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('.v-call');if(!a)return;var i=+a.dataset.i;st.idx=i;st.pending={i:i,t:Date.now()};document.querySelectorAll('.v-it').forEach(function(li){li.classList.toggle('on',+li.dataset.i===i)})});
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&st.pending&&Date.now()-st.pending.t>1500)setTimeout(afterCall,300)});
   window.addEventListener('focus',function(){if(st.pending&&Date.now()-st.pending.t>4000)setTimeout(afterCall,300)});
