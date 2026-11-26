@@ -1249,7 +1249,7 @@ def home(regions_count, region_centers, guides):
 <a href="{E(url_path('정보', '겨울-집-점검'))}"><b>겨울 집 점검</b><span>체크하면 기억돼요</span></a>
 <a href="{E(url_path('정보'))}"><b>생활 정보</b><span>동파·보일러 에러</span></a>
 </div></section>
-{f'<section class="card req-cta"><h2>원하는 시간을 먼저 정하세요</h2><p>날짜·시간·예산을 정해 요청하면, 동네 업체 사장님이 가능한 시간과 가격으로 답해요.</p><a class="btn blue wide" href="{E(url_path(chr(50836)+chr(52397)))}">시간 정해 예약 요청하기</a></section>' if LIVE else f'<section class="card"><h2>우리 아파트 수리 안내</h2><p>개별난방인지 지역난방인지, 지은 지 몇 년인지에 따라 고장 났을 때 먼저 연락할 곳이 달라요.</p><a class="btn blue wide" href="{E(url_path(chr(50500)+chr(54028)+chr(53944)))}">동네 아파트 찾기</a></section>'}
+{f'<section class="card req-cta"><h2>원하는 시간을 먼저 정하세요</h2><p>날짜·시간·예산을 정해 요청하면, 동네 업체 사장님이 가능한 시간과 가격으로 답해요.</p><a class="btn blue wide" href="{E(url_path(chr(50836)+chr(52397)))}">시간 정해 예약 요청하기</a></section>' if LIVE else f'<section class="card"><a class="v-home" href="{E(url_path(chr(47568)+chr(47196)+chr(45)+chr(52286)+chr(44592)))}"><span class="v-mi" aria-hidden="true">🎤</span><span><b>말로 찾기</b><span>"보일러 고장, 송도동 가까운 데" 말하면 바로 전화 연결</span></span></a></section><section class="card"><h2>우리 아파트 수리 안내</h2><p>개별난방인지 지역난방인지, 지은 지 몇 년인지에 따라 고장 났을 때 먼저 연락할 곳이 달라요.</p><a class="btn blue wide" href="{E(url_path(chr(50500)+chr(54028)+chr(53944)))}">동네 아파트 찾기</a></section>'}
 <section class="card"><h2>열린 동네</h2><div class="links">{open_regions}</div><p class="muted">동네와 업종은 차례로 늘어나요.</p></section>
 {('<section class="card"><h2>음식점 단체 예약·포장</h2><div class="hots">' + ''.join(f'<a class="hot" href="{E(url_path("음식점", g))}"><span class="ic" aria-hidden="true">{M["icon"]}</span><b>{E(M["name"])}</b></a>' for g, M in FOOD.items()) + '</div></section>') if FOOD_PAGES else ''}
 <section class="card"><h2>집 수리·청소·상가 업종</h2>{more}</section>
@@ -1523,6 +1523,40 @@ def apt_home(regs):
     return url_path('아파트'), page('아파트 단지별 고장·수리 안내 | 내시간에', '전국 아파트 단지의 난방 방식·지은 해에 맞춘 고장 연락처와 점검을 동별로 안내해요.', url_path('아파트'), body, [('홈', '/'), ('아파트', url_path('아파트'))])
 
 
+def voice_page(regions):
+    R = [[r, gu_name(r), SIDO_SHORT.get(r.split()[0], r.split()[0])] for r in sorted(regions)]
+    ex = ['보일러에 E03 떠요 연수구 송도동 오늘 오후 4시', '싱크대 막혔어 수원시 영통구 지금 바로', '현관 도어락이 안 열려요 강남구 역삼동',
+          '아이가 열이 나요 근처 소아과 마포구', '내일 오전 10시 콜택시 해운대구', '지하철에서 지갑 잃어버렸어', '이번 주말 미술관 종로구', '회식 10명 단체 예약 성동구 성수동']
+    chips = ''.join(f'<button type="button" class="v-ex" data-ex="{E(x)}">{E(x)}</button>' for x in ex)
+    faqs = [('정말 전화가 자동으로 걸리나요?', '목록에서 \'전화\'를 누르면 휴대폰 전화 앱이 열려요. 통화를 마치고 이 화면으로 돌아오면 \'연결됐어요\' 또는 \'안 받아요\'를 고를 수 있어요. \'안 받으면 다음 곳으로 바로 넘어가기\'를 켜 두면, 6초 뒤 다음 곳 전화로 넘어가요. 휴대폰에 따라 전화를 거는 마지막 버튼은 직접 눌러야 할 수 있어요.'),
+            ('내 위치를 가져가나요?', '아니요. GPS 위치는 쓰지 않아요. 말하거나 고른 동네 이름으로만 찾고, 마지막에 쓴 동네만 이 기기에 기억해 둬요.'),
+            ('말한 내용은 어디로 가나요?', '말을 글자로 바꾸는 일은 휴대폰·브라우저의 음성 인식(구글·애플 등)이 해요. 내시간에 서버에는 말한 내용을 저장하지 않아요. 걱정되면 글로 적어서 찾아도 돼요.'),
+            ('어떤 곳을 찾을 수 있나요?', '보일러·하수구·누수·전기·열쇠 같은 수리 업체부터 약국·병원·동물병원, 콜택시, 미술관·박물관·공연장, 식당 단체 예약까지 찾아요. 전화번호는 카카오 지도에 등록된 번호예요.')]
+    body = (f'<section class="hero"><h1>말로 찾기<br><small>말하면 가까운 곳에 바로 전화</small></h1><p class="lead">"보일러 고장 났어, 송도동에서 가까운 데 불러 줘"처럼 말하면 업종·동네·시간을 알아듣고, 가까운 곳을 찾아 통화할 말까지 적어 드려요. 안 받으면 다음 곳으로 바로 넘어가요.</p></section>'
+            f'<section class="card v-box" id="v-box"><button type="button" class="v-mic" id="v-mic" aria-label="눌러서 말하기"><span aria-hidden="true">🎤</span></button><p class="v-micl" id="v-micl">눌러서 말하기</p><p class="v-live" id="v-live" aria-live="polite"></p>'
+            f'<form id="v-form" class="v-form"><input id="v-q" placeholder="글로 적어도 돼요" aria-label="찾을 내용" autocomplete="off"><button type="submit">찾기</button></form>'
+            f'<div class="v-exs">{chips}</div></section>'
+            f'<div class="v-after card" id="v-after" hidden role="dialog" aria-live="assertive"></div>'
+            f'<section class="card" id="v-res"><div id="v-out" aria-live="polite"><p class="v-msg">위에서 말하거나 예시를 눌러 보세요.</p></div></section>'
+            f'<div class="v-toast" id="v-toast" role="status"></div>'
+            '<section class="card"><h2>이렇게 쓰세요</h2><ol class="steps"><li><b>무엇이, 어디서, 언제</b>를 한 번에 말해요. "연수구 송도동, 보일러 에러 E03, 오늘 오후 4시"처럼요.</li>'
+            '<li>가까운 순서로 전화번호가 있는 곳을 최대 6곳 보여 줘요. 위에는 그대로 읽으면 되는 <b>통화 대본</b>이 나와요.</li>'
+            '<li><b>전화</b>를 눌러 통화하고 돌아오면, 연결됐는지 물어봐요. 안 받았으면 <b>다음 곳으로 바로</b> 넘어가요.</li></ol></section>'
+            '<section class="card"><h2>이런 말을 알아들어요</h2><div class="tbl"><table><thead><tr><th scope="col">말하면</th><th scope="col">찾는 곳</th></tr></thead><tbody>'
+            '<tr><td>보일러·온수·난방</td><td>보일러 수리</td></tr><tr><td>싱크대·변기·하수구 막혔어</td><td>하수구 막힘</td></tr><tr><td>물이 새요·아랫집</td><td>누수 탐지</td></tr>'
+            '<tr><td>차단기·누전·정전</td><td>전기 공사</td></tr><tr><td>도어락·문이 안 열려</td><td>열쇠·도어락</td></tr><tr><td>타이어·배터리 방전·견인</td><td>긴급출동</td></tr>'
+            '<tr><td>약국·병원·소아과·동물병원</td><td>문 연 곳 문의</td></tr><tr><td>콜택시·택시</td><td>콜택시</td></tr><tr><td>지갑·휴대폰 잃어버렸어</td><td>분실물센터 (+lost112 안내)</td></tr>'
+            '<tr><td>미술관·박물관·공연</td><td>관람·예약 문의</td></tr><tr><td>회식·단체 예약·미용실</td><td>예약 전화</td></tr></tbody></table></div>'
+            '<p class="muted">시간은 "지금", "오늘 오후 4시", "내일 오전 10시 반"처럼 말하면 대본에 들어가요. 에러 숫자(E03 등)도 알아들어요.</p></section>'
+            + faq_html(faqs))
+    path = url_path('말로-찾기')
+    head = '<script>window.VOICE_REGIONS=' + json.dumps(R, ensure_ascii=False) + ';</script>'
+    return path, page('말로 찾기 · 말하면 가까운 곳에 바로 전화 (보일러·약국·택시·미술관) | 내시간에',
+                      '"보일러 고장 났어, 가까운 데 불러 줘"라고 말하면 가까운 업체를 찾아 전화 대본과 함께 바로 연결해요. 안 받으면 다음 곳으로 넘어가요. 위치(GPS) 없이 동네 이름으로 찾아요.',
+                      path, body, [('홈', '/'), ('말로 찾기', path)], [faq_ld(faqs)], extra_head=head,
+                      scripts=f'<script src="/voice.js?v={V("voice.js")}" defer></script>')
+
+
 def write(path, content):
     fp = os.path.join(OUT, path.strip('/'), 'index.html') if path != '/' else os.path.join(OUT, 'index.html')
     os.makedirs(os.path.dirname(fp), exist_ok=True)
@@ -1619,6 +1653,7 @@ def main():
         write(p, h)
     print(f'아파트 동 페이지 {len(apt_out)}쪽 중 짧거나 비슷한 글 20% 넘어 검색 제외 {len(bad)}쪽')
     p, h = apt_home(areg); write(p, h); urls.append(p)
+    p, h = voice_page(gregs); write(p, h); urls.append(p)
     for kind in gkinds:
         if CFG.get('guides_all') and kind in GUIDES:
             p, h = guide_index(kind, gregs); write(p, h); urls.append(p)
