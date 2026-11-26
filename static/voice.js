@@ -112,7 +112,7 @@
           if(/협회|조합|연합회|학원|교육원|학교|부동산|공인중개/.test(n+' '+c)&&!/학교/.test(k2))return false;
           if(k2==='음식점')return x.category_group_code==='FD6';
           if(k2==='카페')return x.category_group_code==='CE7';
-          if(k3==='visit'){var last=c.split(' > ').slice(-1)[0]||'';return /미술관|박물관|전시|기념관|공연|극장|도서관|갤러리|아트센터|문화센터|문화회관/.test(last+' '+n)&&!/사진관|스튜디오|사찰|교회|성당/.test(last)}
+          if(k3==='visit'){var last=c.split(' > ').slice(-1)[0]||'';return /미술관|박물관|전시|기념관|공연|극장|도서관|갤러리|아트센터|문화센터|문화회관/.test(last+' '+n)&&!/사진관|스튜디오|사찰|교회|성당|주차장|매표소|편의시설/.test(last)}
           if(k3==='fix'||k3==='car')return x.category_group_code!=='FD6'&&x.category_group_code!=='CE7';
           return true});
         var seen={};L=L.filter(function(x){if(seen[x.phone])return false;seen[x.phone]=1;return true}).slice(0,6);
