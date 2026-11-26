@@ -4,39 +4,39 @@
   var $=function(s,r){return (r||document).querySelector(s)},esc=function(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
   var REG=(window.VOICE_REGIONS||[]);
   var KINDS=[
-    [/보일러|난방|온수|뜨거운 ?물|따뜻한 ?물/,'보일러 수리','보일러','fix'],
-    [/하수구|변기|싱크대|배수구|막혔|막힘|역류/,'하수구 막힘','하수구·변기 막힘','fix'],
-    [/누수|물이 ?새|물 ?새|천장.*물|아랫집/,'누수 탐지','누수','fix'],
-    [/차단기|누전|정전|콘센트|전등|전기/,'전기 공사','전기','fix'],
-    [/열쇠|도어락|현관.*안 ?열|문이 ?안 ?열|잠겼|잠김/,'열쇠 도어락','열쇠·도어락','fix'],
-    [/동파|얼었|계량기/,'수도 동파','수도 동파','fix'],
-    [/에어컨|세탁기|냉장고|가전|티비|TV/i,'가전 수리','가전 수리','fix'],
-    [/샷시|새시|창호|창문|방충망/,'샷시','창호·샷시','fix'],
-    [/도배|장판|벽지/,'도배 장판','도배·장판','fix'],
-    [/폐기물|철거|버릴|버리|소파 ?버|가구 ?버/,'폐기물 수거','대형 폐기물','fix'],
-    [/타이어|펑크|배터리|방전|견인|긴급출동/,'타이어 긴급출동','타이어·긴급출동','car'],
-    [/동물병원|강아지|고양이|반려/,'동물병원','동물병원','open'],
-    [/약국/,'약국','약국','open'],
-    [/치과/,'치과','치과','open'],
-    [/응급실/,'응급실','응급실','open'],
-    [/병원|의원|소아과|내과|정형외과|이비인후과/,'병원','병원','open'],
-    [/콜택시|택시/,'콜택시','콜택시','taxi'],
-    [/분실물|잃어버/,'분실물센터','분실물','lost'],
-    [/지하철|전철/,'지하철역','지하철역','info'],
-    [/미술관|갤러리/,'미술관','미술관','visit'],
-    [/박물관/,'박물관','박물관','visit'],
-    [/공연|연극|뮤지컬|콘서트/,'공연장','공연장','visit'],
-    [/도서관/,'도서관','도서관','visit'],
-    [/미용실|헤어|머리 ?자르/,'미용실','미용실','book'],
-    [/네일/,'네일','네일샵','book'],
-    [/세탁소|드라이/,'세탁소','세탁소','open'],
-    [/식당|밥집|맛집|회식|단체/,'음식점','음식점','book'],
-    [/카페/,'카페','카페','open'],
-    [/세차/,'세차','세차장','book'],
-    [/카센터|정비|엔진오일/,'자동차 정비','자동차 정비','car'],
-    [/이사|용달/,'용달 이사','이사·용달','fix'],
-    [/청소/,'청소 업체','청소','fix'],
-    [/방역|바퀴벌레|해충|쥐/,'방역','방역·해충','fix']
+    [/보일러|난방|온수|뜨거운 ?물|따뜻한 ?물/,['보일러','설비','보일러 수리'],'보일러','fix'],
+    [/하수구|변기|싱크대|배수구|막혔|막힘|역류/,['하수구','배관','설비'],'하수구·변기 막힘','fix'],
+    [/누수|물이 ?새|물 ?새|천장.*물|아랫집/,['누수','누수탐지','설비'],'누수','fix'],
+    [/차단기|누전|정전|콘센트|전등|전기/,['전기','전기공사'],'전기','fix'],
+    [/열쇠|도어락|현관.*안 ?열|문이 ?안 ?열|잠겼|잠김/,['열쇠','도어락'],'열쇠·도어락','fix'],
+    [/동파|얼었|계량기/,['설비','배관','보일러'],'수도 동파','fix'],
+    [/에어컨|세탁기|냉장고|가전|티비|TV/i,['서비스센터','전자','에어컨','가전'],'가전 수리','fix'],
+    [/샷시|새시|창호|창문|방충망/,['샷시','창호','유리'],'창호·샷시','fix'],
+    [/도배|장판|벽지/,['도배','인테리어'],'도배·장판','fix'],
+    [/폐기물|철거|버릴|버리|소파 ?버|가구 ?버/,['폐기물','철거','고물상'],'대형 폐기물','fix'],
+    [/타이어|펑크|배터리|방전|견인|긴급출동/,['타이어','카센터','견인'],'타이어·긴급출동','car'],
+    [/동물병원|강아지|고양이|반려/,['동물병원'],'동물병원','open'],
+    [/약국/,['약국'],'약국','open'],
+    [/치과/,['치과'],'치과','open'],
+    [/응급실/,['응급실','응급의료센터'],'응급실','open'],
+    [/병원|의원|소아과|내과|정형외과|이비인후과/,['병원','의원'],'병원','open'],
+    [/콜택시|택시/,['콜택시','택시'],'콜택시','taxi'],
+    [/분실물|잃어버/,['유실물센터','분실물센터'],'분실물','lost'],
+    [/지하철|전철/,['지하철역'],'지하철역','info'],
+    [/미술관|갤러리/,['미술관','갤러리'],'미술관','visit'],
+    [/박물관/,['박물관'],'박물관','visit'],
+    [/공연|연극|뮤지컬|콘서트/,['공연장','극장','아트센터'],'공연장','visit'],
+    [/도서관/,['도서관'],'도서관','visit'],
+    [/미용실|헤어|머리 ?자르/,['미용실','헤어'],'미용실','book'],
+    [/네일/,['네일'],'네일샵','book'],
+    [/세탁소|드라이/,['세탁소','세탁'],'세탁소','open'],
+    [/식당|밥집|맛집|회식|단체/,['음식점','식당'],'음식점','book'],
+    [/카페/,['카페'],'카페','open'],
+    [/세차/,['세차'],'세차장','book'],
+    [/카센터|정비|엔진오일/,['카센터','자동차정비'],'자동차 정비','car'],
+    [/이사|용달/,['이사','용달'],'이사·용달','fix'],
+    [/청소/,['청소'],'청소','fix'],
+    [/방역|바퀴벌레|해충|쥐/,['방역','소독'],'방역·해충','fix']
   ];
   var DIAL=/전화 ?(해|하|걸|좀|부탁|넣어|연결)|연락 ?(해|하|좀|줘|주|부탁|넣어)|연결 ?(해|좀|부탁)|걸어 ?(줘|주)|불러 ?(줘|주)|통화 ?(해|하|연결)|콜 ?(해|불러)|예약 ?(해|하|좀|잡|부탁|넣어|돼|되|가능)|잡아 ?(줘|주)|자리 ?(잡|있)|문의 ?(해|하|좀|부탁)|물어 ?봐 ?(줘|주)|와 ?(줘|주세요|달라)|오라고|보내 ?(줘|주)|부탁해|부탁 ?드려/;
   var BOOK=/예약|잡아 ?(줘|주)|자리 ?(잡|있)/;
@@ -76,7 +76,11 @@
   /* ---------- 카카오 ---------- */
   var kready;function kakaoLoad(){if(!(window.NSG&&NSG.kakao))return Promise.reject(new Error('nokey'));if(kready)return kready;kready=new Promise(function(ok,no){var s=document.createElement('script');s.src='https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&libraries=services&appkey='+encodeURIComponent(NSG.kakao);s.onload=function(){kakao.maps.load(function(){ok()})};s.onerror=no;document.head.appendChild(s)});return kready}
   function geo(q){return new Promise(function(res){var g=new kakao.maps.services.Geocoder();g.addressSearch(q,function(d,st){res(st===kakao.maps.services.Status.OK&&d[0]?{x:+d[0].x,y:+d[0].y,name:d[0].address_name}:null)})})}
-  function places(kw,c,rad){return new Promise(function(res){var ps=new kakao.maps.services.Places(),S=kakao.maps.services;var all=[];function go(p){ps.keywordSearch(kw,function(d,st,pg){if(st===S.Status.OK)all=all.concat(d);if(st===S.Status.OK&&pg&&pg.hasNextPage&&p<2&&all.filter(function(x){return x.phone}).length<8)go(p+1);else res(all)},{location:new kakao.maps.LatLng(c.y,c.x),radius:rad,sort:S.SortBy.DISTANCE,page:p})}go(1)})}
+  function places1(kw,c,rad){return new Promise(function(res){var ps=new kakao.maps.services.Places(),S=kakao.maps.services;ps.keywordSearch(kw,function(d,st){res(st===S.Status.OK?d:[])},{location:new kakao.maps.LatLng(c.y,c.x),radius:rad,sort:S.SortBy.DISTANCE})})}
+  function places(kws,c,rads){var got={},list=[];var ri=0;
+    function step(){if(ri>=rads.length)return Promise.resolve(list);var rad=rads[ri++];
+      return kws.reduce(function(p,kw){return p.then(function(){if(list.length>=6)return;return places1(kw,c,rad).then(function(d){d.forEach(function(x){if(x.phone&&!got[x.id]){got[x.id]=1;list.push(x)}})})})},Promise.resolve()).then(function(){if(list.length>=4||ri>=rads.length){list.sort(function(a,b){return a.distance-b.distance});return list}return step()})}
+    return step()}
   /* ---------- 화면 ---------- */
   var st={o:null,list:[],idx:-1,pending:null,auto:true,timer:null};
   try{st.auto=localStorage.getItem('nsg_voice_auto')!=='0'}catch(e){}
@@ -89,7 +93,8 @@
     $('#v-q').value=text;var o=parse(text);st.o=o;o.dial=DIAL.test(text);o.book=BOOK.test(text);
     if(!o.region&&!o.dong){var a=area();if(a){o.region=a.region;o.dong=a.dong}}
     else if(!o.region&&o.dong){var a2=area();if(a2)o.region=a2.region}
-    var kw=o.kind?o.kind[1]:text.replace(FILLER,' ').replace(/\s+/g,' ').trim();
+    var spec=text.match(/(소아과|소아청소년과|내과|정형외과|이비인후과|피부과|안과|산부인과|한의원)/);
+    var kws=o.kind?o.kind[1].slice():[text.replace(FILLER,' ').replace(/\s+/g,' ').trim()];if(spec)kws=[spec[1]];var kw=kws[0];
     if(!o.region){askArea(o,kw);return}
     saveArea({region:o.region,dong:o.dong||''});
     var where=o.region[1]+(o.dong?' '+o.dong:'');
@@ -100,8 +105,8 @@
       return geo(o.region[0]+(o.dong?' '+o.dong:'')).then(function(c){return c||geo(o.region[0])})
     }).then(function(c){
       if(!c){show(summary+'<p class="v-msg">동네 위치를 못 찾았어요. 동네 이름을 다시 말해 주세요.</p>');return}
-      var rad=o.kind&&/visit|taxi|lost|info/.test(o.kind[3])?20000:(o.dong?3000:8000);
-      return places(kw,c,rad).then(function(L){
+      var rads=o.kind&&/visit|taxi|lost|info/.test(o.kind[3])?[5000,20000]:(o.dong?[3000,8000,20000]:[6000,20000]);
+      return places(kws,c,rads).then(function(L){
         L=L.filter(function(x){return x.phone});
         var seen={};L=L.filter(function(x){if(seen[x.phone])return false;seen[x.phone]=1;return true}).slice(0,6);
         st.list=L;st.idx=-1;render(summary);
@@ -115,7 +120,7 @@
   function km(m){m=+m;return m>=1000?(m/1000).toFixed(1)+'km':m+'m'}
   function render(summary){
     var o=st.o,L=st.list;
-    if(!L.length){show(summary+'<p class="v-msg">전화번호가 있는 곳을 찾지 못했어요. 동네를 넓혀 시·군·구만 말해 보세요.</p>');return}
+    if(!L.length){show(summary+(o.kind&&o.kind[3]==='lost'?'<p class="v-note">잃어버린 물건은 경찰청 유실물 종합안내 <a href="https://www.lost112.go.kr" target="_blank" rel="noopener">lost112.go.kr</a>에서 찾아볼 수 있어요. 지하철·버스라면 그 회사 고객센터에도 물어보세요.</p>':'')+'<p class="v-msg">가까운 곳에서 전화번호가 있는 곳을 찾지 못했어요. 다른 말로 다시 말해 보세요.</p>');return}
     var sc=script(o);
     var h=summary+'<div class="v-script"><div class="v-sh"><b>📝 통화할 때 이렇게 말해요</b><button type="button" id="v-copy">복사</button></div><textarea id="v-scr" rows="4" aria-label="통화 대본">'+esc(sc)+'</textarea></div>'+
       '<label class="v-auto"><input type="checkbox" id="v-autochk"'+(st.auto?' checked':'')+'> 안 받으면 다음 곳으로 바로 넘어가기</label>'+
