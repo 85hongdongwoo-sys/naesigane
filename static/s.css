@@ -318,3 +318,6 @@ h3.sub{color:var(--sub);font-weight:600;font-size:13px;text-transform:none;margi
 .sfig-in figcaption .muted{font-size:12px}
 .tbl td small{color:#8B95A1;font-size:12px}
 .actions.act2{grid-template-columns:1fr 1fr}
+.tbl td.nw{white-space:nowrap}
+.tbl.apt td:first-child{white-space:normal;word-break:keep-all;overflow-wrap:anywhere;min-width:7em}.tbl.apt td small{color:var(--muted,#6b7684)}
+@media(max-width:400px){.tbl.apt th,.tbl.apt td{padding-left:8px;padding-right:8px}}

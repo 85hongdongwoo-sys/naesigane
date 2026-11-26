@@ -162,7 +162,7 @@
             return '<article class="shop"><div class="shop-head"><span class="pin" aria-hidden="true">'+(i+1)+'</span><h3>'+esc2(x.place_name)+'</h3></div>'+
               '<p class="addr">'+esc2(ad.split(' ').slice(2).join(' ')||ad)+'</p>'+'<div class="chips">'+(cat?'<span class="chip">'+esc2(cat)+'</span>':'')+(x._near?'<span class="chip">가까운 지역 · '+esc2(ad.split(' ').slice(0,2).join(' '))+'</span>':'')+'</div>'+
               '<p class="tel">☎ '+esc2(x.phone)+'</p>'+
-              '<div class="actions act3"><a class="btn book" href="/요청/?t='+encodeURIComponent(live.dataset.trade||'')+'&r='+encodeURIComponent(live.dataset.region||'')+'&s='+encodeURIComponent(x.place_name)+'">예약 요청<span class="dev">개발 중</span></a>'+
+              ((window.NSG&&NSG.reqLive)?'<div class="actions act3"><a class="btn book" href="/요청/?t='+encodeURIComponent(live.dataset.trade||'')+'&r='+encodeURIComponent(live.dataset.region||'')+'&s='+encodeURIComponent(x.place_name)+'">예약 요청</a>':'<div class="actions act2">')+
               '<a class="btn ghost sm call" href="tel:'+esc2(x.phone.replace(/[^0-9]/g,''))+'"><span aria-hidden="true">☎</span> 전화</a>'+
               '<a class="btn ghost sm" href="'+esc2(nav)+'" target="_blank" rel="noopener">길찾기</a></div></article>'}
           function more(){var next=all.slice(shown,shown+10);list.insertAdjacentHTML('beforeend',next.map(function(x,j){return card(x,shown+j)}).join(''));shown+=next.length;moreB.hidden=shown>=all.length}

@@ -241,8 +241,10 @@ def book_btn(trade, region, name=''):
 
 NO_BOOK = {'약국', '동물병원'}
 
+LIVE = bool(CFG.get('requests_live'))  # 예약 요청 기능이 열리기 전에는 예약 버튼을 숨겨요
+
 def act_row(trade, region, name, call_html, nav):
-    if trade in NO_BOOK:
+    if trade in NO_BOOK or not LIVE:
         return (f'<div class="actions act2">{call_html}'
                 f'<a class="btn ghost sm" href="{E(nav)}" target="_blank" rel="noopener">길찾기</a></div>')
     return (f'<div class="actions act3">{book_btn(trade, region, name)}{call_html}'
@@ -263,8 +265,8 @@ def food_card(rec, i, g, region):
     chips = ''.join(f'<span class="chip">{E(c)}</span>' for c in (sub, dong) if c)
     return (f'<article class="shop" id="s{i}"><div class="shop-head"><span class="pin" aria-hidden="true">{i + 1}</span><h3>{E(name)}</h3></div>'
             f'<p class="addr">{E(short)}</p><div class="chips">{chips}</div>'
-            f'<div class="actions two-btn"><a class="btn book" href="{E(base + "&t=" + qv("단체 예약"))}">단체 예약 요청<span class="dev">개발 중</span></a>'
-            f'<a class="btn book" href="{E(base + "&t=" + qv("포장 예약"))}">포장 예약<span class="dev">개발 중</span></a></div>'
+            + (f'<div class="actions two-btn"><a class="btn book" href="{E(base + "&t=" + qv("단체 예약"))}">단체 예약 요청</a>'
+            f'<a class="btn book" href="{E(base + "&t=" + qv("포장 예약"))}">포장 예약</a></div>' if LIVE else '') +
             f'<div class="actions two-btn">{lookup_btn(name, q, lat, lng)}<a class="btn ghost sm" href="{E(nav)}" target="_blank" rel="noopener">길찾기</a></div>'
             f'<p class="lookup-note" hidden></p></article>')
 
@@ -281,7 +283,7 @@ def food_page(g, region, entry, ctx):
 <p class="lead">{E(region)}의 {E(M['what'])} {n}곳이에요. 모임 인원이나 포장할 시간을 정해서 바로 전화하세요.</p></section>
 <section class="card"><h2>{E(gu)} {E(M['name'])} {n}곳</h2>
 <div id="members" data-region="{E(region)}" data-trade="{E(M['name'])}" hidden></div>
-<p class="muted">'전화'를 누르면 번호를 찾아 바로 걸려요. '단체 예약 요청'과 '포장 예약'은 원하는 시간과 인원을 정해 가게에 요청하는 기능으로, 지금 만들고 있어요.</p>
+<p class="muted">'전화'를 누르면 번호를 찾아 바로 걸려요.</p>
 <div class="shops" data-page="20">{cards}</div><button type="button" class="btn ghost wide more" hidden>더 보기</button>
 {f'<p class="muted">그 외 {n - len(lst)}곳은 네이버 지도에서 찾아보세요.</p>' if n > len(lst) else ''}
 <p class="source">가게 이름·주소: 소상공인시장진흥공단 상가(상권)정보{(" (" + sd[:4] + "." + sd[4:6] + ")") if sd else ""}. 영업 상황이 바뀌었을 수 있어요.</p></section>
@@ -320,7 +322,7 @@ def dir_card(rec, i, sec, gm, region):
     nav = naver_nav(name + " " + gu + " " + short)
     chips = ''.join(f'<span class="chip">{E(c)}</span>' for c in (sub, dong) if c)
     call = lookup_btn(name, name + ' ' + gu.split()[-1], lat, lng)
-    if DIRM[sec]['kind'] == 'pro':
+    if DIRM[sec]['kind'] == 'pro' and LIVE:
         acts = (f'<div class="actions one">{book_btn("상담 예약", region, name).replace(">예약 요청<", ">상담 예약 요청<")}</div>'
                 f'<div class="actions two-btn">{call}<a class="btn ghost sm" href="{E(nav)}" target="_blank" rel="noopener">길찾기</a></div>')
     else:
@@ -343,7 +345,7 @@ def dir_page(sec, g, region, entry, ctx):
 <p class="lead">{E(region)}의 {E(gm['name'])} {n}곳이에요. 누르면 바로 전화가 걸려요.</p></section>
 <div class="warn">{E(S['intro'])}</div>
 <section class="card"><h2>{E(gu)} {E(gm['name'])} {n}곳</h2>
-{'<p class="muted">' + chr(39) + '상담 예약 요청' + chr(39) + '은 원하는 시간을 정해 사무소에 요청하는 기능으로, 지금 만들고 있어요. 이용료는 받지 않아요.</p>' if pro else ''}
+{'<p class="muted">' + chr(39) + '상담 예약 요청' + chr(39) + '은 원하는 시간을 정해 사무소에 요청하는 기능이에요. 이용료는 받지 않아요.</p>' if pro and LIVE else ''}
 <div class="shops" data-page="20">{cards}</div><button type="button" class="btn ghost wide more" hidden>더 보기</button>
 {f'<p class="muted">그 외 {n - len(lst)}곳은 네이버 지도에서 찾아보세요.</p>' if n > len(lst) else ''}
 <p class="source">이름·주소: 소상공인시장진흥공단 상가(상권)정보{(" (" + sd[:4] + "." + sd[4:6] + ")") if sd else ""}. 목록 순서는 동네별 정리일 뿐 추천 순위가 아니에요.</p></section>
@@ -838,13 +840,13 @@ def guide_page(kind, region, ctx=None):
         sd = ctx.get('store_date', '')
         live_static = (f'<section class="card"><h2>{E(gu)} {E(G["name"])} 업체 {total}곳</h2>'
             f'<div id="members" data-region="{E(region)}" data-trade="{E(G["name"])}" hidden></div>'
-            + ('' if SLIM_NOW[0] else f'<p class="muted">\'전화\'를 누르면 번호를 찾아 바로 걸려요. \'예약 요청\'은 원하는 시간을 정해 업체에 요청하는 기능으로, 지금 만들고 있어요.</p>')
+            + ('' if SLIM_NOW[0] else f'<p class="muted">\'전화\'를 누르면 번호를 찾아 바로 걸려요.</p>')
             + f'<div class="shops" data-page="20">{cards}</div>'
             f'<button type="button" class="btn ghost wide more" hidden>더 보기</button>'
             + (f'<p class="muted">그 외 {total - len(stores)}곳은 네이버에서 찾아보세요.</p>' if total > len(stores) else '')
             + (f'<p class="source">출처: 소상공인시장진흥공단 상가정보{(" (" + sd[:4] + "." + sd[4:6] + ")") if sd else ""}</p></section>' if SLIM_NOW[0] else
             f'<p class="source">업체 이름·주소: 소상공인시장진흥공단 상가(상권)정보{(" (" + sd[:4] + "." + sd[4:6] + ")") if sd else ""}. 영업 상황이 바뀌었을 수 있어요. '
-            f'사장님이 등록하면 \'예약 답변 업체\'로 먼저 보여요. <a href="{E(url_path("사장님"))}">사장님 무료 등록</a></p></section>'))
+            f'사장님이 등록하면 전화번호·영업시간을 직접 고칠 수 있어요. <a href="{E(url_path("사장님"))}">사장님 무료 등록</a></p></section>'))
     live = (f'<section class="card live-shops" data-kw="{E("|".join(G.get("kw", [G["name"]])))}" data-gu="{E(gu.split()[-1])}" data-must="{E(G.get('must', ''))}" data-area="{E(gu)}" data-trade="{E(G['name'])}" data-region="{E(region)}" data-lat="{ctr[0]}" data-lng="{ctr[1]}">'
             f'<h2>{E(gu)} {E(G["name"])} 업체</h2>'
             f'<div id="members" data-region="{E(region)}" data-trade="{E(G["name"])}" hidden></div>'
@@ -852,7 +854,7 @@ def guide_page(kind, region, ctx=None):
             f'<div class="live-list" aria-live="polite"><p class="muted">업체를 찾는 중이에요…</p></div>'
             f'<button type="button" class="btn ghost wide live-more" hidden>더 보기</button>'
             f'<p class="muted"><a href="https://m.search.naver.com/search.naver?query={quote(gu + " " + G.get("kw", [G["name"]])[0])}" target="_blank" rel="noopener">네이버에서 {E(gu)} {E(G["name"])} 더 찾기</a></p>'
-            f'<p class="source">사장님이 내시간에에 등록하면 위쪽에 \'예약 답변 업체\'로 먼저 보이고, 손님 예약 요청을 문자로 받아요. <a href="{E(url_path("사장님"))}">사장님 무료 등록</a></p></section>')
+            f'<p class="source">사장님이 등록하면 전화번호·영업시간을 직접 고칠 수 있어요. <a href="{E(url_path("사장님"))}">사장님 무료 등록</a></p></section>')
     if stores:
         live = live_static
     car = ''
@@ -892,7 +894,7 @@ def guide_page(kind, region, ctx=None):
 {slot_fig(kind, 'pro', region)}
 {'' if kind in SLIM else extra}
 {f'<section class="card"><h2>업체에 전화할 때 꼭 물어볼 것</h2><ul class="plain">{ask}</ul></section>' if ask and kind not in SLIM else ''}
-{'' if kind in SLIM else SOON}
+{'' if kind in SLIM or not LIVE else SOON}
 {local}
 {age_section(kind, gu, ctx.get('apts') or [], slim=kind in SLIM)}
 {apt_table(kind, region, ctx.get('apts') or []) if kind in SLIM else ''}
@@ -1247,7 +1249,7 @@ def home(regions_count, region_centers, guides):
 <a href="{E(url_path('정보', '겨울-집-점검'))}"><b>겨울 집 점검</b><span>체크하면 기억돼요</span></a>
 <a href="{E(url_path('정보'))}"><b>생활 정보</b><span>동파·보일러 에러</span></a>
 </div></section>
-<section class="card req-cta"><h2>원하는 시간을 먼저 정하세요</h2><p>날짜·시간·예산을 정해 요청하면, 동네 업체 사장님이 가능한 시간과 가격으로 답해요.</p><a class="btn blue wide" href="{E(url_path('요청'))}">시간 정해 예약 요청하기</a></section>
+{f'<section class="card req-cta"><h2>원하는 시간을 먼저 정하세요</h2><p>날짜·시간·예산을 정해 요청하면, 동네 업체 사장님이 가능한 시간과 가격으로 답해요.</p><a class="btn blue wide" href="{E(url_path(chr(50836)+chr(52397)))}">시간 정해 예약 요청하기</a></section>' if LIVE else f'<section class="card"><h2>우리 아파트 수리 안내</h2><p>개별난방인지 지역난방인지, 지은 지 몇 년인지에 따라 고장 났을 때 먼저 연락할 곳이 달라요.</p><a class="btn blue wide" href="{E(url_path(chr(50500)+chr(54028)+chr(53944)))}">동네 아파트 찾기</a></section>'}
 <section class="card"><h2>열린 동네</h2><div class="links">{open_regions}</div><p class="muted">동네와 업종은 차례로 늘어나요.</p></section>
 {('<section class="card"><h2>음식점 단체 예약·포장</h2><div class="hots">' + ''.join(f'<a class="hot" href="{E(url_path("음식점", g))}"><span class="ic" aria-hidden="true">{M["icon"]}</span><b>{E(M["name"])}</b></a>' for g, M in FOOD.items()) + '</div></section>') if FOOD_PAGES else ''}
 <section class="card"><h2>집 수리·청소·상가 업종</h2>{more}</section>
@@ -1332,6 +1334,195 @@ def apt_section(kind, gu, apts, apt_date):
             f'<p class="muted">{E(gu)}의 큰 단지: {big}</p>'
             f'<p class="source">아파트 정보: 국토교통부 공동주택관리정보시스템(K-apt) 관리비 공개 단지 기준{(", " + apt_date[:4] + "." + apt_date[4:6] + "." + apt_date[6:]) if apt_date else ""}</p></section>')
 
+# ---------------------------------------------------------------- 아파트: 동(洞)별 단지 안내 페이지
+
+APT_MIN_N = 5  # 관리비 공개 단지가 3곳 이상인 동만 페이지를 만들어요
+APT_KINDS = ['보일러-고장', '하수구-막힘', '누수-탐지', '전기-고장', '열쇠-도어락', '수도-동파']
+
+def apt_slug(name):
+    t = re.sub(r'[^\w가-힣]+', '-', name).strip('-')
+    return t or 'apt'
+
+def apt_paths(apts):
+    """(지역, 동) → 페이지 주소."""
+    out = {}
+    for reg, L in apts.items():
+        c = Counter(a[1] for a in L if a[1] and a[2])
+        for d, n in c.items():
+            if n >= APT_MIN_N:
+                out[(reg, d)] = url_path('아파트', slug_region(reg), apt_slug(d))
+    return out
+
+def apt_names(L, k=4):
+    t = ', '.join(E(a[0]) for a in L[:k])
+    return t + (f' 등 {len(L)}곳' if len(L) > k else '')
+
+def apt_dong_page(region, dong, L, ctx):
+    gu = gu_name(region); yr = TODAY.year
+    A = sorted([a for a in L if a[1] == dong and a[2]], key=lambda a: (a[2], a[0]))
+    G_all = [a for a in L if a[2]]
+    n = len(A); hh = sum(a[3] or 0 for a in A)
+    old, new = A[0], A[-1]
+    big = max(A, key=lambda a: a[3] or 0)
+    avg = round(sum(a[2] for a in A) / n); gavg = round(sum(a[2] for a in G_all) / len(G_all))
+    indiv = [a for a in A if (a[4] or '').startswith('개별')]
+    dist = [a for a in A if (a[4] or '').startswith('지역')]
+    cent = [a for a in A if (a[4] or '').startswith('중앙')]
+    corr = [a for a in A if a[5] == '복도식']
+    o30 = [a for a in A if yr - a[2] >= 30]
+    rows = ''.join(f'<tr id="a{i}"><td>{E(a[0])}</td><td class="nw">{a[2]}<br><small>{yr - a[2]}년차{f" · {a[6]}개 동" if a[6] else ""}</small></td><td class="nw">{(f"{a[3]:,}" if a[3] else "")}<br><small>{E((a[4] or "").replace("난방", ""))}</small></td></tr>' for i, a in enumerate(A))
+    cmp = f'{gu} 평균({gavg}년)보다 {abs(gavg - avg)}년 {"먼저" if avg < gavg else "늦게"}' if avg != gavg else f'{gu} 평균({gavg}년)과 같은 해'
+    lead = (f'{E(gu)} {E(dong)}에서 관리비를 공개하는 아파트는 {n}곳, 모두 {hh:,}세대예요. 가장 오래된 곳은 {E(old[0])}({old[2]}년), '
+            f'가장 새 곳은 {E(new[0])}({new[2]}년)이고, 가장 큰 단지는 {E(big[0])}({(big[3] or 0):,}세대)예요.')
+    # 난방별 연락처
+    heat = []
+    if indiv:
+        gl = CITYGAS['regions'].get(region) or []
+        gas = ''.join(f'<tr><td>{E(c)}</td><td><a href="tel:{E(p.replace("-", ""))}">{E(p)}</a></td></tr>' for c, p in gl)
+        heat.append(f'<h3 class="sub">개별난방 {len(indiv)}곳</h3><p>{apt_names(indiv)}: 보일러 업체에 직접, 가스 문제면 도시가스 회사로.</p>'
+                    + (f'<div class="tbl"><table><thead><tr><th scope="col">{E(gu)} 도시가스</th><th scope="col">고객센터</th></tr></thead><tbody>{gas}</tbody></table></div>' if gas else ''))
+    if dist:
+        heat.append(f'<h3 class="sub">지역난방 {len(dist)}곳</h3><p>{apt_names(dist)}: 집에 보일러가 없어 관리사무소가 먼저예요.</p>')
+    if cent:
+        heat.append(f'<h3 class="sub">중앙난방 {len(cent)}곳</h3><p>{apt_names(cent)}: 난방 시간·온도를 관리사무소가 정해요.</p>')
+    # 나이
+    bands = [(0, 10, '10년 미만'), (10, 20, '10~19년'), (20, 30, '20~29년'), (30, 200, '30년 이상')]
+    bl = [(lab, [a for a in A if lo <= yr - a[2] < hi]) for lo, hi, lab in bands]
+    brow = ''.join(f'<tr><td>{lab}</td><td>{len(x)}곳</td><td>{apt_names(x, 3) if x else "-"}</td></tr>' for lab, x in bl)
+    age_txt = []
+    if o30:
+        age_txt.append(f'30년 넘은 {apt_names(o30, 3)}: 동파·녹물·아래층 누수를 함께 조심하세요.')
+    mid = [a for a in A if 10 <= yr - a[2] < 30]
+    if mid:
+        age_txt.append(f'{min(yr - a[2] for a in mid)}~{max(yr - a[2] for a in mid)}년 된 {len(mid)}곳은 보일러 교체와 배관 막힘이 잦은 나이예요.')
+    yng = [a for a in A if yr - a[2] < 10]
+    if yng:
+        age_txt.append(f'{min(a[2] for a in yng)}년 이후 지은 {len(yng)}곳은 하자보수 대상인지 먼저 확인하세요.')
+    # 동파
+    frost = (f'복도식 {len(corr)}곳({apt_names(corr, 3)})은 계량기가 바깥 복도에 있어 한파 전에 보온하세요.'
+             if corr else f'{E(dong)} {n}곳 모두 계단식·혼합식이라 계량기가 덜 얼어요.')
+    # 단지별 한 줄
+    def one(a):
+        h = a[4] or ''
+        who = '보일러 업체' if h.startswith('개별') else ('관리사무소' if h else '관리사무소나 업체')
+        m = {'복도식': '계량기 바깥 복도', '계단식': '계량기 계단실·집 안', '혼합식': '동마다 계량기 위치 다름'}.get(a[5] or '', '')
+        ag = yr - a[2]
+        tip = '하자보수 확인' if ag < 10 else ('보일러·배관 점검' if ag < 20 else ('세대 배관·전기 점검' if ag < 30 else '공용 배관 공사 계획 확인'))
+        return f'<li><b>{E(a[0])}</b> — {a[2]}년 · {(a[3] or 0):,}세대{f" · {a[6]}개 동" if a[6] else ""}. 난방이 안 되면 {who}. {m + ". " if m else ""}{ag}년차라 {tip}.</li>'
+    ones = '<ul class="plain">' + ''.join(one(a) for a in sorted(A, key=lambda a: -(a[3] or 0))) + '</ul>'
+    pc = lambda X, T: round(len(X) / len(T) * 100) if T else 0
+    g_ind = [a for a in G_all if (a[4] or '').startswith('개별')]; g_cor = [a for a in G_all if a[5] == '복도식']; g_o30 = [a for a in G_all if yr - a[2] >= 30]
+    g_hh = round(sum(a[3] or 0 for a in G_all) / len(G_all)); d_hh = round(hh / n)
+    stat = (f'<div class="tbl apt"><table><thead><tr><th scope="col">항목</th><th scope="col">{E(dong)}</th><th scope="col">{E(gu.split()[-1])}</th></tr></thead><tbody>'
+            f'<tr><td>단지 수</td><td class="nw">{n}곳</td><td class="nw">{len(G_all)}곳</td></tr>'
+            f'<tr><td>평균 사용승인</td><td class="nw">{avg}년</td><td class="nw">{gavg}년</td></tr>'
+            f'<tr><td>단지당 평균 세대 수</td><td class="nw">{d_hh:,}</td><td class="nw">{g_hh:,}</td></tr>'
+            f'<tr><td>개별난방 비율</td><td>{pc(indiv, A)}%</td><td>{pc(g_ind, G_all)}%</td></tr>'
+            f'<tr><td>복도식 비율</td><td>{pc(corr, A)}%</td><td>{pc(g_cor, G_all)}%</td></tr>'
+            f'<tr><td>30년 넘은 단지</td><td>{pc(o30, A)}%</td><td>{pc(g_o30, G_all)}%</td></tr>'
+            '</tbody></table></div>')
+    # 업체
+    blocks = []
+    kinds = [k for k in APT_KINDS if not (k == '보일러-고장' and not indiv)]
+    for k in kinds:
+        st = ctx['stores'].get(k, {}).get(region, [])
+        here = [r for r in st if r[2] == dong][:3]
+        if not here:
+            continue
+        Gk = GUIDES[k]
+        cards = ''.join(store_card(r, i, Gk['name'], region) for i, r in enumerate(here))
+        blocks.append(f'<h3 class="sub">{E(Gk["name"])}</h3><div class="shops">{cards}</div>'
+                      f'<p class="muted"><a href="{E(url_path("안내", k, region.replace(" ", "-")))}">{E(gu)} {E(Gk["name"])} {len(st)}곳 모두 보기</a></p>')
+    shops = (f'<section class="card"><h2>{E(dong)}에 있는 수리 업체</h2>{"".join(blocks)}<p class="source">소상공인시장진흥공단 상가정보</p></section>') if blocks else ''
+    # 이웃 동
+    near = ctx['near_dongs']
+    ix = next((i for i, (d, _) in enumerate(near) if d == dong), 0)
+    ring = [near[(ix + j) % len(near)] for j in range(1, min(7, len(near)))]
+    nl = ''.join(f'<a href="{E(ctx["paths"][(region, d)])}">{E(d)} <small>{c}곳</small></a>' for d, c in ring if d != dong)
+    faqs = [(f'{dong}에서 가장 오래된 아파트는 어디예요?', f'{old[0]}{josa(old[0], "이에요", "예요")}. {old[2]}년 사용승인, 올해 {yr - old[2]}년차예요.'),
+            (f'{dong} 아파트는 대부분 어떤 난방이에요?', f'{n}곳 중 개별난방 {len(indiv)}곳, 지역난방 {len(dist)}곳, 중앙난방 {len(cent)}곳이에요.'),
+            (f'{dong}에서 가장 큰 아파트는 어디예요?', f'{big[0]}, {(big[3] or 0):,}세대예요.')]
+    ad = ctx['apt_date']
+    body = (f'<section class="hero"><h1>{E(dong)} 아파트 {n}곳<br><small>단지별 고장·수리 안내</small></h1><p class="lead">{lead}</p></section>'
+            f'<section class="card"><h2>{E(dong)} 아파트 목록</h2><div class="tbl apt"><table><thead><tr><th scope="col">단지</th><th scope="col">사용승인</th><th scope="col">세대</th></tr></thead><tbody>{rows}</tbody></table></div>'
+            f'<p>{E(dong)} 단지의 평균 사용승인 연도는 {avg}년으로 {cmp}에 지었어요.</p><p class="source">출처: 공동주택관리정보시스템(K-apt) 관리비 공개 단지 ({E(ad[:4])}.{E(ad[4:6])})</p></section>'
+            f'<section class="card"><h2>단지별 한 줄 안내</h2>{ones}</section>'
+            f'<section class="card"><h2>{E(dong)}{josa(dong, "과", "와")} {E(gu)} 비교</h2>{stat}</section>'
+            f'<section class="card"><h2>난방·온수가 안 될 때 먼저 연락할 곳</h2>{"".join(heat)}</section>'
+            f'{shops}'
+            f'<section class="card"><h2>단지 나이별로 챙길 것</h2><div class="tbl"><table><thead><tr><th scope="col">지은 지</th><th scope="col">단지 수</th><th scope="col">단지</th></tr></thead><tbody>{brow}</tbody></table></div><p>{" ".join(age_txt)}</p></section>'
+            f'<section class="card"><h2>{E(dong)} 겨울철 수도 계량기</h2><p>{frost}</p></section>'
+            f'{faq_html(faqs)}'
+            + (f'<section class="card"><h2>{E(gu)} 다른 동 아파트</h2><div class="links">{nl}</div></section>' if nl else '')
+            )
+    path = ctx['paths'][(region, dong)]
+    title = f'{short_region(region)} {dong} 아파트 {n}곳 고장·수리 연락처 ({", ".join(a[0] for a in sorted(A, key=lambda a: -(a[3] or 0))[:2])}) | 내시간에'
+    desc = f'{short_region(region)} {dong} 아파트 {n}곳({", ".join(a[0] for a in sorted(A, key=lambda a: -(a[3] or 0))[:3])} 등)의 사용승인 연도·세대 수·난방 방식과, 난방이 안 될 때 먼저 연락할 곳, {dong} 수리 업체.'
+    crumbs = [('홈', '/'), ('아파트', url_path('아파트')), (f'{gu} 아파트', url_path('아파트', slug_region(region))), (dong, path)]
+    return path, page(title, desc, path, body, crumbs, [faq_ld(faqs)])
+
+def apt_overlap(items, lim=0.2):
+    """아파트 동 페이지끼리 5어절 묶음이 lim 넘게 겹치면 그 페이지를 돌려줘요 (둘 중 짧은 쪽)."""
+    def txt(h):
+        m = re.search(r'<main.*?</main>', h, re.S); h = m.group(0) if m else h
+        h = re.sub(r'<script.*?</script>', '', h, flags=re.S)
+        return re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', h))).split()
+    S = []; short = set()
+    for p, h in items:
+        w = txt(h); S.append((p, {' '.join(w[i:i + 5]) for i in range(len(w) - 4)}))
+        if len(' '.join(w)) < 2000: short.add(p)  # 2,000자보다 짧은 페이지도 검색에서 빼요
+    df = Counter(x for _, st in S for x in st)
+    freq = {x: k for k, x in enumerate(x for x, n in df.items() if n > 150)}
+    masks = [sum(1 << freq[x] for x in st if x in freq) for _, st in S]
+    inv = defaultdict(list)
+    for i, (_, st) in enumerate(S):
+        for x in st:
+            if x not in freq: inv[x].append(i)
+    bad = set(short)
+    for i, (p, st) in enumerate(S):
+        c = Counter()
+        for x in st:
+            if x in freq: continue
+            for j in inv[x]:
+                if j != i: c[j] += 1
+        mi = masks[i]
+        for j in range(len(S)):
+            if j == i: continue
+            n2 = len(S[j][1])
+            if len(st) > n2: continue  # 둘 중 짧은 쪽만 빼요
+            k = c.get(j, 0) + bin(mi & masks[j]).count('1')
+            if k / max(1, len(st)) > lim:
+                bad.add(p); break
+    return bad
+
+
+def apt_region_page(region, L, paths):
+    gu = gu_name(region)
+    L = sorted([a for a in L if a[2]], key=lambda a: -(a[3] or 0))
+    def cell(a):
+        k = (region, a[1])
+        return f'<a href="{E(paths[k])}">{E(a[0])}</a>' if k in paths else E(a[0])
+    rows = ''.join(f'<tr><td>{cell(a)}<br><small>{E(a[1] or "")}</small></td><td class="nw">{a[2]}</td><td class="nw">{(f"{a[3]:,}" if a[3] else "")}<br><small>{E((a[4] or "").replace("난방", ""))}</small></td></tr>' for a in L[:300])
+    ds = sorted(((d, c) for (r, d), _ in paths.items() if r == region for c in [sum(1 for a in L if a[1] == d)]), key=lambda x: -x[1])
+    dl = ''.join(f'<a href="{E(paths[(region, d)])}">{E(d)} <small>{c}곳</small></a>' for d, c in ds)
+    body = (f'<section class="hero"><h1>{E(gu)} 아파트 단지별 수리 안내</h1><p class="lead">{E(gu)}에서 관리비를 공개하는 아파트 {len(L)}곳이에요. 동을 고르면 그 동 단지들의 난방 방식에 맞는 연락처와 단지 나이에 맞는 점검, 동네 수리 업체를 볼 수 있어요.</p></section>'
+            + (f'<section class="card"><h2>동 고르기</h2><div class="links">{dl}</div></section>' if dl else '')
+            + f'<section class="card"><h2>{E(gu)} 아파트 (세대 수 많은 순)</h2><div class="tbl apt"><table><thead><tr><th scope="col">단지</th><th scope="col">사용승인</th><th scope="col">세대</th></tr></thead><tbody>{rows}</tbody></table></div>'
+            '<p class="source">출처: 공동주택관리정보시스템(K-apt)</p></section>')
+    path = url_path('아파트', slug_region(region))
+    crumbs = [('홈', '/'), ('아파트', url_path('아파트')), (f'{gu} 아파트', path)]
+    return path, page(f'{short_region(region)} 아파트 단지별 고장·수리 안내 | 내시간에', f'{short_region(region)} 아파트 {len(L)}곳의 사용승인 연도·세대 수·난방 방식과 동별 수리 연락처 안내.', path, body, crumbs, noindex=not ds), len(ds)
+
+def apt_home(regs):
+    by = defaultdict(list)
+    for r, n in regs:
+        by[r.split()[0]].append((r, n))
+    blocks = ''.join(f'<h3 class="sub">{E(SIDO_SHORT.get(s, s))}</h3><div class="links">' + ''.join(f'<a href="{E(url_path("아파트", slug_region(r)))}">{E(gu_name(r))} <small>{n}</small></a>' for r, n in sorted(L)) + '</div>' for s, L in by.items())
+    body = ('<section class="hero"><h1>아파트 단지별 수리 안내</h1><p class="lead">우리 단지가 개별난방인지 지역난방인지, 지은 지 몇 년인지에 따라 고장 났을 때 먼저 연락할 곳이 달라요. 시·군·구를 고르면 동별 안내를 볼 수 있어요.</p></section>'
+            f'<section class="card"><h2>지역 고르기</h2>{blocks}<p class="muted">숫자는 안내 페이지가 있는 동 수예요.</p></section>')
+    return url_path('아파트'), page('아파트 단지별 고장·수리 안내 | 내시간에', '전국 아파트 단지의 난방 방식·지은 해에 맞춘 고장 연락처와 점검을 동별로 안내해요.', url_path('아파트'), body, [('홈', '/'), ('아파트', url_path('아파트'))])
+
+
 def write(path, content):
     fp = os.path.join(OUT, path.strip('/'), 'index.html') if path != '/' else os.path.join(OUT, 'index.html')
     os.makedirs(os.path.dirname(fp), exist_ok=True)
@@ -1407,6 +1598,27 @@ def main():
                 p, h = guide_page(kind, reg, {**ctx, 'stores': sdata['kinds'].get(kind, {}).get(reg, [])})
                 write(p, h)
                 if 'noindex' not in h: urls.append(p); guides.append((kind, p))
+    apaths = apt_paths({r: L for r, L in apts.items() if r in gregs})
+    areg = []; apt_out = []
+    for reg in gregs:
+        L = apts.get(reg, [])
+        if not L: continue
+        dc = Counter(a[1] for a in L if a[1] and a[2])
+        nd = sorted(((d, c) for d, c in dc.items() if (reg, d) in apaths), key=lambda x: -x[1])
+        actx = {'paths': apaths, 'apt_date': apt_date, 'stores': sdata['kinds'], 'near_dongs': nd[:40]}
+        for d, _ in nd:
+            p, h = apt_dong_page(reg, d, L, actx); apt_out.append((p, h))
+        p, h, n = apt_region_page(reg, L, apaths); write(p, h)
+        if n: urls.append(p); areg.append((reg, n))
+    bad = apt_overlap(apt_out)
+    for p, h in apt_out:
+        if p in bad:
+            h = h.replace('<meta name="viewport"', '<meta name="robots" content="noindex,follow"><meta name="viewport"', 1)
+        else:
+            urls.append(p)
+        write(p, h)
+    print(f'아파트 동 페이지 {len(apt_out)}쪽 중 짧거나 비슷한 글 20% 넘어 검색 제외 {len(bad)}쪽')
+    p, h = apt_home(areg); write(p, h); urls.append(p)
     for kind in gkinds:
         if CFG.get('guides_all') and kind in GUIDES:
             p, h = guide_index(kind, gregs); write(p, h); urls.append(p)
