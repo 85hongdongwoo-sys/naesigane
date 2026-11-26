@@ -107,7 +107,14 @@
       if(!c){show(summary+'<p class="v-msg">동네 위치를 못 찾았어요. 동네 이름을 다시 말해 주세요.</p>');return}
       var rads=o.kind&&/visit|taxi|lost|info/.test(o.kind[3])?[5000,20000]:(o.dong?[3000,8000,20000]:[6000,20000]);
       return places(kws,c,rads).then(function(L){
-        L=L.filter(function(x){return x.phone});
+        var k3=o.kind?o.kind[3]:'',k2=o.kind?o.kind[2]:'';
+        L=L.filter(function(x){var c=x.category_name||'',n=x.place_name||'';
+          if(/협회|조합|연합회|학원|교육원|학교|부동산|공인중개/.test(n+' '+c)&&!/학교/.test(k2))return false;
+          if(k2==='음식점')return x.category_group_code==='FD6';
+          if(k2==='카페')return x.category_group_code==='CE7';
+          if(k3==='visit')return /문화|예술|전시|미술|박물|공연|극장|도서관|갤러리/.test(c);
+          if(k3==='fix'||k3==='car')return x.category_group_code!=='FD6'&&x.category_group_code!=='CE7';
+          return true});
         var seen={};L=L.filter(function(x){if(seen[x.phone])return false;seen[x.phone]=1;return true}).slice(0,6);
         st.list=L;st.idx=-1;render(summary);
         if(o.dial&&L.length){var b=document.createElement('button');b.type='button';b.className='v-big';b.innerHTML='☎ '+esc(L[0].place_name)+'에 전화';b.onclick=function(){dial(0)};var sc=$('.v-script');sc.parentNode.insertBefore(b,sc);
