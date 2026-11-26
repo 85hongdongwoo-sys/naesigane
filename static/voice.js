@@ -38,8 +38,9 @@
     [/청소/,'청소 업체','청소','fix'],
     [/방역|바퀴벌레|해충|쥐/,'방역','방역·해충','fix']
   ];
-  var DIAL=/전화 ?(해|하|걸|좀|부탁|넣어|연결)|연락 ?(해|하|좀|줘|주|부탁|넣어)|연결 ?(해|좀|부탁)|걸어 ?(줘|주)|불러 ?(줘|주)|통화 ?(해|하|연결)|콜 ?(해|불러)/;
-  var FILLER=/(연락 ?해 ?줘|연락 ?해 ?주세요|연락해|연락 ?좀|연락 ?부탁|전화 ?걸어 ?줘|걸어 ?줘|통화 ?연결|통화 ?하고 ?싶|가까운|근처|가장|제일|좀|빨리|어디|데|곳|불러 ?줘|불러 ?주세요|찾아 ?줘|찾아 ?주세요|예약해 ?줘|예약 ?해 ?주세요|예약|전화해 ?줘|전화 ?해 ?주세요|연결해 ?줘|알려 ?줘|해 ?줘|주세요|요\.?$)/g;
+  var DIAL=/전화 ?(해|하|걸|좀|부탁|넣어|연결)|연락 ?(해|하|좀|줘|주|부탁|넣어)|연결 ?(해|좀|부탁)|걸어 ?(줘|주)|불러 ?(줘|주)|통화 ?(해|하|연결)|콜 ?(해|불러)|예약 ?(해|하|좀|잡|부탁|넣어|돼|되|가능)|잡아 ?(줘|주)|자리 ?(잡|있)|문의 ?(해|하|좀|부탁)|물어 ?봐 ?(줘|주)|와 ?(줘|주세요|달라)|오라고|보내 ?(줘|주)|부탁해|부탁 ?드려/;
+  var BOOK=/예약|잡아 ?(줘|주)|자리 ?(잡|있)/;
+  var FILLER=/(예약 ?잡아 ?줘|예약 ?좀|예약 ?부탁|예약 ?가능|자리 ?잡아 ?줘|잡아 ?줘|문의 ?해 ?줘|문의 ?좀|물어 ?봐 ?줘|와 ?달라고|와 ?주세요|와 ?줘|부탁해|부탁 ?드려요?|연락 ?해 ?줘|연락 ?해 ?주세요|연락해|연락 ?좀|연락 ?부탁|전화 ?걸어 ?줘|걸어 ?줘|통화 ?연결|통화 ?하고 ?싶|가까운|근처|가장|제일|좀|빨리|어디|데|곳|불러 ?줘|불러 ?주세요|찾아 ?줘|찾아 ?주세요|예약해 ?줘|예약 ?해 ?주세요|예약|전화해 ?줘|전화 ?해 ?주세요|연결해 ?줘|알려 ?줘|해 ?줘|주세요|요\.?$)/g;
   function parse(t){
     var o={raw:t.trim(),kind:null};
     for(var i=0;i<KINDS.length;i++){if(KINDS[i][0].test(t)){o.kind=KINDS[i];break}}
@@ -63,8 +64,9 @@
   function script(o,place){
     var area=(o.region?o.region[1].split(' ').pop():'')+(o.dong?' '+o.dong:'');var when=o.when||'오늘 중에';var k=o.kind?o.kind[3]:'gen';var nm=o.kind?o.kind[2]:'';
     var sym=o.sym?o.sym.replace(/[.。]$/,''):'';
-    if(k==='fix')return '안녕하세요. '+(area?area+'에 사는데요, ':'')+(sym?sym+'.':nm+' 때문에 연락드렸어요.')+(o.code&&sym.toUpperCase().replace(/[\s-]/g,'').indexOf(o.code.replace(/-/g,''))<0?' 화면에 에러 '+o.code+' 표시가 떠요.':'')+' '+when+' 와 주실 수 있을까요? 출장비랑 대략 비용도 알려 주세요.';
+    if(k==='fix')return '안녕하세요. '+(area?area+'에 사는데요, ':'')+(sym?sym+'.':nm+' 때문에 연락드렸어요.')+(o.book?' 방문 예약을 잡고 싶어요.':'')+(o.code&&sym.toUpperCase().replace(/[\s-]/g,'').indexOf(o.code.replace(/-/g,''))<0?' 화면에 에러 '+o.code+' 표시가 떠요.':'')+' '+when+' 와 주실 수 있을까요? 출장비랑 대략 비용도 알려 주세요.';
     if(k==='car')return '안녕하세요. '+(area?area+' 근처인데요, ':'')+(sym?sym+'.':nm+' 도움이 필요해요.')+' '+when+' 와 주실 수 있을까요? 도착까지 얼마나 걸리고 비용은 얼마인지 알려 주세요.';
+    if(o.book&&k!=='visit'&&k!=='fix'&&k!=='car')return '안녕하세요. '+when+' '+(sym?sym+' ':'')+'예약하고 싶은데 가능할까요? (인원·이름·연락처)로 부탁드려요.';
     if(k==='open')return '안녕하세요. '+when+' 문 여나요? '+(sym?sym+'. ':'')+'지금 가면 바로 볼 수 있는지 알고 싶어요.';
     if(k==='taxi')return '안녕하세요. '+(area?area+'에서 ':'')+'택시 부르려고요. '+when+' 배차 가능할까요? 출발지는 (정확한 주소)예요.';
     if(k==='lost')return '안녕하세요. 물건을 잃어버려서 연락드렸어요. '+(sym?sym+'. ':'')+'(잃어버린 날짜·장소·물건 모양)인데 들어온 게 있는지 확인 부탁드려요.';
@@ -84,7 +86,7 @@
   function msg(t){show('<p class="v-msg">'+t+'</p>')}
   function run(text){
     text=(text||'').trim();if(!text){msg('찾을 내용을 말하거나 적어 주세요.');return}
-    $('#v-q').value=text;var o=parse(text);st.o=o;o.dial=DIAL.test(text);
+    $('#v-q').value=text;var o=parse(text);st.o=o;o.dial=DIAL.test(text);o.book=BOOK.test(text);
     if(!o.region&&!o.dong){var a=area();if(a){o.region=a.region;o.dong=a.dong}}
     else if(!o.region&&o.dong){var a2=area();if(a2)o.region=a2.region}
     var kw=o.kind?o.kind[1]:text.replace(FILLER,' ').replace(/\s+/g,' ').trim();
