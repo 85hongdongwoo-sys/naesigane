@@ -38,7 +38,8 @@
     [/청소/,'청소 업체','청소','fix'],
     [/방역|바퀴벌레|해충|쥐/,'방역','방역·해충','fix']
   ];
-  var FILLER=/(가까운|근처|가장|제일|좀|빨리|어디|데|곳|불러 ?줘|불러 ?주세요|찾아 ?줘|찾아 ?주세요|예약해 ?줘|예약 ?해 ?주세요|예약|전화해 ?줘|전화 ?해 ?주세요|연결해 ?줘|알려 ?줘|해 ?줘|주세요|요\.?$)/g;
+  var DIAL=/전화 ?(해|하|걸|좀|부탁|넣어|연결)|연락 ?(해|하|좀|줘|주|부탁|넣어)|연결 ?(해|좀|부탁)|걸어 ?(줘|주)|불러 ?(줘|주)|통화 ?(해|하|연결)|콜 ?(해|불러)/;
+  var FILLER=/(연락 ?해 ?줘|연락 ?해 ?주세요|연락해|연락 ?좀|연락 ?부탁|전화 ?걸어 ?줘|걸어 ?줘|통화 ?연결|통화 ?하고 ?싶|가까운|근처|가장|제일|좀|빨리|어디|데|곳|불러 ?줘|불러 ?주세요|찾아 ?줘|찾아 ?주세요|예약해 ?줘|예약 ?해 ?주세요|예약|전화해 ?줘|전화 ?해 ?주세요|연결해 ?줘|알려 ?줘|해 ?줘|주세요|요\.?$)/g;
   function parse(t){
     var o={raw:t.trim(),kind:null};
     for(var i=0;i<KINDS.length;i++){if(KINDS[i][0].test(t)){o.kind=KINDS[i];break}}
@@ -83,7 +84,7 @@
   function msg(t){show('<p class="v-msg">'+t+'</p>')}
   function run(text){
     text=(text||'').trim();if(!text){msg('찾을 내용을 말하거나 적어 주세요.');return}
-    $('#v-q').value=text;var o=parse(text);st.o=o;o.dial=/전화 ?해|전화 ?걸어|전화 ?좀|연결해|연결 ?좀|불러 ?줘|불러 ?주/.test(text);
+    $('#v-q').value=text;var o=parse(text);st.o=o;o.dial=DIAL.test(text);
     if(!o.region&&!o.dong){var a=area();if(a){o.region=a.region;o.dong=a.dong}}
     else if(!o.region&&o.dong){var a2=area();if(a2)o.region=a2.region}
     var kw=o.kind?o.kind[1]:text.replace(FILLER,' ').replace(/\s+/g,' ').trim();

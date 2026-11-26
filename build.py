@@ -1541,7 +1541,7 @@ def voice_page(regions):
             f'<div class="v-toast" id="v-toast" role="status"></div>'
             '<section class="card"><h2>이렇게 쓰세요</h2><ol class="steps"><li><b>무엇이, 어디서, 언제</b>를 한 번에 말해요. "연수구 송도동, 보일러 에러 E03, 오늘 오후 4시"처럼요.</li>'
             '<li>가까운 순서로 전화번호가 있는 곳을 최대 6곳 보여 줘요. 위에는 그대로 읽으면 되는 <b>통화 대본</b>이 나와요.</li>'
-            '<li>끝에 <b>"전화해 줘"</b>까지 말하면 가장 가까운 곳의 전화 앱이 바로 열려요. 통화 버튼만 누르면 돼요.</li>'
+            '<li>끝에 <b>"전화해 줘"</b>나 <b>"연락해 줘"</b>까지 말하면 가장 가까운 곳의 전화 앱이 바로 열려요. 통화 버튼만 누르면 돼요.</li>'
             '<li><b>전화</b>를 눌러 통화하고 돌아오면, 연결됐는지 물어봐요. 안 받았으면 <b>다음 곳으로 바로</b> 넘어가요.</li></ol></section>'
             '<section class="card"><h2>이런 말을 알아들어요</h2><div class="tbl"><table><thead><tr><th scope="col">말하면</th><th scope="col">찾는 곳</th></tr></thead><tbody>'
             '<tr><td>보일러·온수·난방</td><td>보일러 수리</td></tr><tr><td>싱크대·변기·하수구 막혔어</td><td>하수구 막힘</td></tr><tr><td>물이 새요·아랫집</td><td>누수 탐지</td></tr>'
