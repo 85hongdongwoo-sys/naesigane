@@ -19,6 +19,10 @@ jobs:
         with:
           python-version: '3.12'
       - run: python3 build.py
+      - name: 유사도 5% 미만 페이지만 검색에 남기기 (data-sim keep 목록)
+        run: |
+          git fetch -q --depth 1 origin data-sim && git show FETCH_HEAD:sim.json > /tmp/sim.json || echo "no sim data"
+          python3 build/patch_simgate.py _site /tmp/sim.json
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
