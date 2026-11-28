@@ -928,6 +928,7 @@ def static_pages():
     p = url_path('사장님')
     pages[p] = page('사장님 무료 등록 신청 | 내시간에', '내시간에에 업체를 무료로 등록하고 손님 예약 요청을 문자로 받아 보세요.', p, f'''<section class="hero"><h1>사장님, 손님이 원하는 시간에<br>맞춰 답해 보세요</h1>
 <p class="lead">손님이 먼저 시간을 정해 요청하면, 사장님은 문자 버튼 세 개로 "가능 / 다른 시간 / 어려움"만 누르면 돼요.</p></section>
+<section class="card"><h2>어떻게 받는지 먼저 보세요</h2><p>손님 요청이 휴대폰에 오고, 미리 채워진 답을 확인해 보내는 과정을 1분 시연으로 볼 수 있어요.</p><a class="btn blue wide" href="{E(url_path('사장님-시연'))}">시연 보기</a></section>
 <section class="card"><h2>등록하면 이렇게 바뀌어요</h2><ul class="plain"><li>전화번호·영업시간·가격대를 직접 고칠 수 있어요.</li><li>업체 목록에 '예약 답변 업체'로 표시되고, 손님 예약 요청을 문자로 받아요.</li><li>사업자등록 확인을 거친 업체만 등록돼요.</li></ul></section>
 <section class="card"><h2>지금은 등록 신청을 받고 있어요</h2><p>업체 이름, 사업자등록번호, 연락받을 휴대폰 번호를 적어 신청해 주세요. 확인 후 연락드려요. 신청은 무료예요.</p>
 <div id="join-mail"{' hidden' if CFG.get('supabase_url') else ''}><a class="btn dark" href="{E(mail_link('내시간에 사장님 등록 신청'))}">이메일로 등록 신청하기</a><p class="muted">받는 곳: {em}</p></div>
@@ -944,6 +945,9 @@ def static_pages():
 <label class="agree"><input type="checkbox" name="sms_consent" required><span>손님 예약 요청 알림 문자를 받는 데 동의해요. 언제든 그만 받을 수 있어요.</span></label>
 <p id="join-msg" class="err" aria-live="polite"></p>
 <button type="submit" class="btn blue wide">무료 등록 신청하기</button></form></section>''', scripts=f'<script src="/flow.js?v={V("flow.js")}" defer></script>')
+    p = url_path('사장님-시연')
+    pages[p] = page('사장님 예약 답변 시연 | 내시간에', '손님 예약 요청이 사장님 휴대폰에 오고, 추천 답변으로 바로 답하는 과정을 미리 보는 시연이에요.', p, '''<section class="hero"><h1>예약 요청에 답하는 과정,<br>1분 만에 보기</h1><p class="lead">손님 요청 → 사장님 알림 → 추천 답변 확인 → 손님 확정까지 순서대로 눌러 보세요. 예시 데이터로 움직이는 시연이에요.</p></section>
+<div id="demo" aria-live="polite"><noscript>이 화면은 자바스크립트가 필요해요.</noscript></div>''', noindex=True, scripts=f'<script src="/demo.js?v={V("demo.js")}" defer></script>')
     p = url_path('정보-수정-삭제-요청')
     pages[p] = page('업체 정보 수정·삭제 요청 | 내시간에', '내시간에에 실린 업체 정보의 수정이나 삭제를 요청하는 방법이에요.', p, f'''<section class="hero"><h1>업체 정보 수정·삭제 요청</h1>
 <p class="lead">내시간에의 업체 정보는 공공데이터(국토교통부 표준데이터 등)를 바탕으로 해요. 정보가 틀렸거나, 사장님이 정보 게시를 원하지 않으시면 알려 주세요.</p></section>

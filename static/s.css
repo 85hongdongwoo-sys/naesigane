@@ -375,3 +375,15 @@ h3.sub{color:var(--sub);font-weight:600;font-size:13px;text-transform:none;margi
 .v-home b{font-size:17px}.v-home span{display:block;font-size:14px;color:#4e5968;margin-top:2px}
 @media(max-width:380px){.v-ask .v-row{grid-template-columns:1fr}.v-row2{grid-template-columns:1fr}.v-mic{width:96px;height:96px;font-size:40px}}
 .v-big{display:block;width:100%;min-height:58px;margin:0 0 10px;border:0;border-radius:16px;background:#1B64DA;color:#fff;font:inherit;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 8px 20px rgba(27,100,218,.3);white-space:normal;overflow-wrap:anywhere}
+.dm-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;list-style:none;padding:0;margin:0 0 12px}
+.dm-steps button{width:100%;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border:1px solid #e2e5ea;border-radius:12px;background:#fff;font:inherit;font-size:12.5px;color:#6b7280;cursor:pointer}
+.dm-steps b{width:22px;height:22px;border-radius:50%;background:#eef0f3;display:grid;place-items:center;font-size:12px}
+.dm-steps .on button{border-color:#2563eb;color:#111}.dm-steps .on b{background:#2563eb;color:#fff}.dm-steps .done b{background:#dbeafe;color:#2563eb}
+.dm-sum{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:12px 0;padding:12px;border-radius:12px;background:#f6f7f9}
+.dm-sum dt{color:#6b7280;font-size:13px}.dm-sum dd{margin:0;word-break:keep-all}
+.dm-phone{max-width:300px;margin:12px auto;padding:16px;border-radius:28px;background:#f1f3f6;border:6px solid #1f2937}
+.dm-bubble{background:#fff;border-radius:14px;padding:12px;line-height:1.55;font-size:14px;word-break:keep-all}.dm-phone small{display:block;text-align:right;color:#6b7280;margin-top:6px}
+.dm-draft{margin-top:12px;padding:14px;border:2px solid #2563eb;border-radius:14px;background:#f5f8ff}
+.dm-badge{display:inline-block;margin:0 0 10px;padding:2px 10px;border-radius:99px;background:#2563eb;color:#fff;font-size:12.5px;font-weight:600}
+.dm-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dm-draft .seg{display:flex;gap:6px;margin-bottom:10px}.dm-draft .seg .opt{flex:1}
